@@ -366,7 +366,9 @@ void pybind_trianglemesh(py::module &m) {
                         "This function uses the original implementation by "
                         "Kazhdan. See https://github.com/mkazhdan/PoissonRecon",
                         "pcd"_a, "depth"_a = 8, "width"_a = 0, "scale"_a = 1.1,
-                        "linear_fit"_a = false)
+                        "linear_fit"_a = false,
+                        "use_normal_length_as_confidence"_a = false,
+                        "n_threads"_a = -1)
             .def_static("create_box", &geometry::TriangleMesh::CreateBox,
                         "Factory function to create a box. The left bottom "
                         "corner on the "
@@ -698,7 +700,13 @@ void pybind_trianglemesh(py::module &m) {
               "reconstruction and the diameter of the samples' bounding cube."},
              {"linear_fit",
               "If true, the reconstructor will use linear interpolation to "
-              "estimate the positions of iso-vertices."}});
+              "estimate the positions of iso-vertices."},
+             {"use_normal_length_as_confidence",
+              "If true, use the length (norm) of normal vectors as "
+              "point confidence"},
+             {"n_threads",
+              "Number of threads used for reconstruction. Set to -1 to "
+              "automatically determine it."}});
     docstring::ClassMethodDocInject(m, "TriangleMesh", "create_box",
                                     {{"width", "x-directional length."},
                                      {"height", "y-directional length."},

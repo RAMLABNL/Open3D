@@ -3,7 +3,7 @@
 
 set -ev
 
-SUDO=${SUDO:=sudo} # SUDO=command in docker (running as root, sudo not available)
+
 if [ "$1" == "assume-yes" ]; then
     APT_CONFIRM="--assume-yes"
 else
@@ -53,5 +53,5 @@ if [ "$(uname -m)" == "aarch64" ]; then
 fi
 
 echo "apt-get install ${deps[*]}"
-$SUDO apt-get update
-$SUDO apt-get install ${APT_CONFIRM} ${deps[*]}
+apt-get update
+apt-get install ${APT_CONFIRM} ${deps[*]}

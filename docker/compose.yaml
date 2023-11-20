@@ -1,0 +1,12 @@
+version: '3.3'
+
+services:
+    o3dbuilder:
+        volumes:
+          - '../:/opt/MaxQ/o3d'
+        entrypoint: /bin/bash
+        image: o3dbuilder
+        build: 
+            context: .
+            dockerfile: Dockerfile
+        stdin_open: true

@@ -567,6 +567,10 @@ public:
     /// estimate the positions of iso-vertices.
     /// \param n_threads Number of threads used for reconstruction. Set to -1 to
     /// automatically determine it.
+    /// \param use_normal_length_as_confidence If true, use the length (norm)
+    /// of normal vectors as point confidence.
+    /// \param n_threads Number of threads used for reconstruction. Set to -1
+    /// to automatically determine it.
     /// \return The estimated TriangleMesh, and per vertex density values that
     /// can be used to to trim the mesh.
     static std::tuple<std::shared_ptr<TriangleMesh>, std::vector<double>>
@@ -575,7 +579,8 @@ public:
                                 float width = 0.0f,
                                 float scale = 1.1f,
                                 bool linear_fit = false,
-                                int n_threads = -1);
+                                bool use_normal_length_as_confidence = false,
+                                int n_threads = 1);
 
     /// Factory function to create a tetrahedron mesh (trianglemeshfactory.cpp).
     /// the mesh centroid will be at (0,0,0) and \p radius defines the

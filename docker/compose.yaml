@@ -3,10 +3,17 @@ version: '3.3'
 services:
     o3dbuilder:
         volumes:
-          - '../:/opt/MaxQ/o3d'
+          - '../:/opt/MaxQ/open3d'
         entrypoint: /bin/bash
         image: o3dbuilder
-        build: 
-            context: .
-            dockerfile: Dockerfile
         stdin_open: true
+        network_mode: "host"
+
+    o3dtester:
+        volumes:
+          - '../:/opt/MaxQ/open3d'
+        entrypoint: /bin/bash
+        image: mc-backend:latest
+        stdin_open: true
+        network_mode: "host"
+

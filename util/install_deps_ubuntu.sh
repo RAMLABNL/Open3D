@@ -31,6 +31,9 @@ deps=(
     libudev-dev
     autoconf
     libtool
+    libzmq3-dev
+    libembree-dev
+    libvtk9-dev
 )
 
 eval $(

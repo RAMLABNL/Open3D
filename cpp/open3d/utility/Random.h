@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -188,6 +169,52 @@ public:
 
 protected:
     std::normal_distribution<T> distribution_;
+};
+
+/// Generate discretely distributed integer values according to a range of
+/// weight values.
+/// This class is globally seeded by utility::random::Seed().
+/// This class is a wrapper around std::discrete_distribution.
+///
+/// Example:
+/// ```cpp
+/// #include "open3d/utility/Random.h"
+///
+/// // Globally seed Open3D. This will affect all random functions.
+/// utility::random::Seed(0);
+///
+/// // Weighted random choice of size_t
+/// std::vector<double> weights{1, 2, 3, 4, 5};
+/// utility::random::DiscreteGenerator<size_t> gen(weights.cbegin(),
+/// weights.cend()); for (size_t i = 0; i < 10; i++) {
+///     std::cout << gen() << std::endl;
+/// }
+/// ```
+template <typename T>
+class DiscreteGenerator {
+public:
+    /// Generate discretely distributed integer values according to a range of
+    /// weight values.
+    /// \param first The iterator or pointer pointing to the first element in
+    /// the range of weights.
+    /// \param last The iterator or pointer pointing to one past the last
+    /// element in the range of weights.
+    template <typename InputIt>
+    DiscreteGenerator(InputIt first, InputIt last)
+        : distribution_(first, last) {
+        if (first > last) {
+            utility::LogError("first must be <= last.");
+        }
+    }
+
+    /// Call this to generate a discretely distributed integer value.
+    T operator()() {
+        std::lock_guard<std::mutex> lock(*GetMutex());
+        return distribution_(*GetEngine());
+    }
+
+protected:
+    std::discrete_distribution<T> distribution_;
 };
 
 }  // namespace random

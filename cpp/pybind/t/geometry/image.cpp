@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/t/geometry/Image.h"
@@ -72,12 +53,11 @@ static const std::unordered_map<std::string, std::string>
                 {"distance_sigma",
                  "Standard deviation for the image pixel positions."}};
 
-void pybind_image(py::module &m) {
+void pybind_image_declarations(py::module &m) {
     py::class_<Image, PyGeometry<Image>, std::shared_ptr<Image>, Geometry>
             image(m, "Image", py::buffer_protocol(),
                   "The Image class stores image with customizable rols, cols, "
                   "channels, dtype and device.");
-
     py::enum_<Image::InterpType>(m, "InterpType", "Interpolation type.")
             .value("Nearest", Image::InterpType::Nearest)
             .value("Linear", Image::InterpType::Linear)
@@ -85,7 +65,19 @@ void pybind_image(py::module &m) {
             .value("Lanczos", Image::InterpType::Lanczos)
             .value("Super", Image::InterpType::Super)
             .export_values();
-
+    py::class_<RGBDImage, PyGeometry<RGBDImage>, std::shared_ptr<RGBDImage>,
+               Geometry>
+            rgbd_image(
+                    m, "RGBDImage",
+                    "RGBDImage is a pair of color and depth images. For most "
+                    "processing, the image pair should be aligned (same "
+                    "viewpoint and  "
+                    "resolution).");
+}
+void pybind_image_definitions(py::module &m) {
+    auto image = static_cast<py::class_<Image, PyGeometry<Image>,
+                                        std::shared_ptr<Image>, Geometry>>(
+            m.attr("Image"));
     // Constructors
     image.def(py::init<int64_t, int64_t, int64_t, core::Dtype, core::Device>(),
               "Row-major storage is used, similar to OpenCV. Use (row, col, "
@@ -101,6 +93,7 @@ void pybind_image(py::module &m) {
                  "tensor"_a);
     docstring::ClassMethodDocInject(m, "Image", "__init__",
                                     map_shared_argument_docstrings);
+    py::detail::bind_copy_functions<Image>(image);
 
     // Pickle support.
     image.def(py::pickle(
@@ -188,7 +181,8 @@ void pybind_image(py::module &m) {
                  "Upsample if sampling rate > 1. Aspect ratio is always "
                  "kept.",
                  "sampling_rate"_a = 0.5,
-                 "interp_type"_a = Image::InterpType::Nearest)
+                 py::arg_v("interp_type", Image::InterpType::Nearest,
+                           "open3d.t.geometry.InterpType.Nearest"))
             .def("pyrdown", &Image::PyrDown,
                  "Return a new downsampled image with pyramid downsampling "
                  "formed by a chained Gaussian filter (kernel_size = 5, sigma"
@@ -261,7 +255,7 @@ void pybind_image(py::module &m) {
               py::overload_cast<core::Dtype, bool, utility::optional<double>,
                                 double>(&Image::To, py::const_),
               "Returns an Image with the specified Dtype.", "dtype"_a,
-              "scale"_a = py::none(), "offset"_a = 0.0, "copy"_a = false);
+              "copy"_a = false, "scale"_a = py::none(), "offset"_a = 0.0);
     docstring::ClassMethodDocInject(
             m, "Image", "to",
             {{"dtype", "The targeted dtype to convert to."},
@@ -284,15 +278,10 @@ void pybind_image(py::module &m) {
     docstring::ClassMethodDocInject(m, "Image", "clear");
     docstring::ClassMethodDocInject(m, "Image", "is_empty");
     docstring::ClassMethodDocInject(m, "Image", "to_legacy");
-
-    py::class_<RGBDImage, PyGeometry<RGBDImage>, std::shared_ptr<RGBDImage>,
-               Geometry>
-            rgbd_image(
-                    m, "RGBDImage",
-                    "RGBDImage is a pair of color and depth images. For most "
-                    "processing, the image pair should be aligned (same "
-                    "viewpoint and  "
-                    "resolution).");
+    auto rgbd_image =
+            static_cast<py::class_<RGBDImage, PyGeometry<RGBDImage>,
+                                   std::shared_ptr<RGBDImage>, Geometry>>(
+                    m.attr("RGBDImage"));
     rgbd_image
             // Constructors.
             .def(py::init<>(), "Construct an empty RGBDImage.")

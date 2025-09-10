@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/geometry/RGBDImage.h"
@@ -35,7 +16,19 @@
 namespace open3d {
 namespace io {
 
-void pybind_sensor(py::module &m) {
+void pybind_sensor_declarations(py::module &m) {
+    py::class_<AzureKinectSensorConfig> azure_kinect_sensor_config(
+            m, "AzureKinectSensorConfig", "AzureKinect sensor configuration.");
+    py::class_<MKVMetadata> azure_kinect_mkv_metadata(
+            m, "AzureKinectMKVMetadata", "AzureKinect mkv metadata.");
+    py::class_<AzureKinectSensor> azure_kinect_sensor(m, "AzureKinectSensor",
+                                                      "AzureKinect sensor.");
+    py::class_<AzureKinectRecorder> azure_kinect_recorder(
+            m, "AzureKinectRecorder", "AzureKinect recorder.");
+    py::class_<MKVReader> azure_kinect_mkv_reader(
+            m, "AzureKinectMKVReader", "AzureKinect mkv file reader.");
+}
+void pybind_sensor_definitions(py::module &m) {
     static const std::unordered_map<std::string, std::string>
             map_shared_argument_docstrings = {
                     {"sensor_index", "The selected device index."},
@@ -48,8 +41,9 @@ void pybind_sensor(py::module &m) {
                      "visualizer."}};
 
     // Class kinect config
-    py::class_<AzureKinectSensorConfig> azure_kinect_sensor_config(
-            m, "AzureKinectSensorConfig", "AzureKinect sensor configuration.");
+    auto azure_kinect_sensor_config =
+            static_cast<py::class_<AzureKinectSensorConfig>>(
+                    m.attr("AzureKinectSensorConfig"));
     py::detail::bind_default_constructor<AzureKinectSensorConfig>(
             azure_kinect_sensor_config);
     azure_kinect_sensor_config.def(
@@ -58,9 +52,8 @@ void pybind_sensor(py::module &m) {
                 return new AzureKinectSensorConfig(config);
             }),
             "config"_a);
-
-    py::class_<MKVMetadata> azure_kinect_mkv_metadata(
-            m, "AzureKinectMKVMetadata", "AzureKinect mkv metadata.");
+    auto azure_kinect_mkv_metadata = static_cast<py::class_<MKVMetadata>>(
+            m.attr("AzureKinectMKVMetadata"));
     py::detail::bind_default_constructor<MKVMetadata>(
             azure_kinect_mkv_metadata);
     azure_kinect_mkv_metadata
@@ -72,9 +65,8 @@ void pybind_sensor(py::module &m) {
                            "Length of the video (usec)");
 
     // Class sensor
-    py::class_<AzureKinectSensor> azure_kinect_sensor(m, "AzureKinectSensor",
-                                                      "AzureKinect sensor.");
-
+    auto azure_kinect_sensor = static_cast<py::class_<AzureKinectSensor>>(
+            m.attr("AzureKinectSensor"));
     azure_kinect_sensor.def(
             py::init([](const AzureKinectSensorConfig &sensor_config) {
                 return new AzureKinectSensor(sensor_config);
@@ -97,9 +89,8 @@ void pybind_sensor(py::module &m) {
                                     map_shared_argument_docstrings);
 
     // Class recorder
-    py::class_<AzureKinectRecorder> azure_kinect_recorder(
-            m, "AzureKinectRecorder", "AzureKinect recorder.");
-
+    auto azure_kinect_recorder = static_cast<py::class_<AzureKinectRecorder>>(
+            m.attr("AzureKinectRecorder"));
     azure_kinect_recorder.def(
             py::init([](const AzureKinectSensorConfig &sensor_config,
                         size_t sensor_index) {
@@ -132,8 +123,8 @@ void pybind_sensor(py::module &m) {
                                     map_shared_argument_docstrings);
 
     // Class mkv reader
-    py::class_<MKVReader> azure_kinect_mkv_reader(
-            m, "AzureKinectMKVReader", "AzureKinect mkv file reader.");
+    auto azure_kinect_mkv_reader =
+            static_cast<py::class_<MKVReader>>(m.attr("AzureKinectMKVReader"));
     azure_kinect_mkv_reader.def(py::init([]() { return MKVReader(); }));
     azure_kinect_mkv_reader
             .def("is_opened", &MKVReader::IsOpened,

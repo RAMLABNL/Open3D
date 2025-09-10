@@ -1,31 +1,13 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
 
+#include <sstream>
 #include <string>
 
 #include "open3d/t/geometry/Image.h"
@@ -53,6 +35,9 @@ public:
 
     Material(const Material &mat) = default;
 
+    /// Convert from MaterialRecord
+    static Material FromMaterialRecord(const MaterialRecord &mat);
+
     Material &operator=(const Material &other) = default;
 
     /// Create an empty but valid material for the specified material name
@@ -69,6 +54,9 @@ public:
 
     /// Get the name of the material.
     const std::string &GetMaterialName() const { return material_name_; }
+
+    /// String reprentation for printing.
+    std::string ToString() const;
 
     /// Returns the texture map map
     const TextureMaps &GetTextureMaps() const { return texture_maps_; }
@@ -268,8 +256,11 @@ public:
     float GetAbsorptionDistance() const {
         return GetScalarProperty("absorption_distance");
     }
+    Eigen::Vector4f GetEmissiveColor() const {
+        return GetVectorProperty("emissive_color");
+    }
 
-    bool HasBaseColor() const { return HasVectorProperty("color"); }
+    bool HasBaseColor() const { return HasVectorProperty("base_color"); }
     bool HasBaseMetallic() const { return HasScalarProperty("metallic"); }
     bool HasBaseRoughness() const { return HasScalarProperty("roughness"); }
     bool HasBaseReflectance() const { return HasScalarProperty("reflectance"); }
@@ -285,6 +276,9 @@ public:
     }
     bool HasAbsorptionDistance() const {
         return HasScalarProperty("absorption_distance");
+    }
+    bool HasEmissiveColor() const {
+        return HasVectorProperty("emissive_color");
     }
 
     void SetBaseColor(const Eigen::Vector4f &value) {
@@ -313,6 +307,9 @@ public:
     }
     void SetAbsorptionDistance(float value) {
         SetScalarProperty("absorption_distance", value);
+    }
+    void SetEmissiveColor(const Eigen::Vector4f &value) {
+        SetVectorProperty("emissive_color", value);
     }
 
     ////////////////////////////////////////////////////////////////////////////

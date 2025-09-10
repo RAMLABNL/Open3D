@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "pybind/t/pipelines/slac/slac.h"
@@ -37,10 +18,45 @@ namespace t {
 namespace pipelines {
 namespace slac {
 
-void pybind_slac_classes(py::module &m) {
+// SLAC functions have similar arguments, sharing arg docstrings.
+static const std::unordered_map<std::string, std::string>
+        map_shared_argument_docstrings = {
+                {"fnames_processed",
+                 "List of filenames (str) for pre-processed pointcloud "
+                 "fragments."},
+                {"fragment_filenames",
+                 "List of filenames (str) for pointcloud fragments."},
+                {"fragment_pose_graph", "PoseGraph for pointcloud fragments"},
+                {"params",
+                 "slac_optimizer_params Parameters to tune in optimization."},
+                {"debug_option", "debug options."}};
+
+void pybind_slac_declarations(py::module &m) {
+    py::module m_slac = m.def_submodule(
+            "slac",
+            "Tensor-based Simultaneous Localisation and Calibration pipeline.");
     py::class_<SLACOptimizerParams> slac_optimizer_params(
-            m, "slac_optimizer_params",
+            m_slac, "slac_optimizer_params",
             "SLAC parameters to tune in optimization.");
+    py::class_<SLACDebugOption> slac_debug_option(m_slac, "slac_debug_option",
+                                                  "SLAC debug options.");
+    py::class_<ControlGrid> control_grid(
+            m_slac, "control_grid",
+            " ControlGrid is a spatially hashed voxel grid used for non-rigid "
+            "point cloud registration and TSDF integration. Each grid stores a "
+            "map from the initial grid location to the deformed location. You "
+            "can imagine a control grid as a jelly that is warped upon "
+            "perturbation with its overall shape preserved. "
+            "Reference: "
+            "https://github.com/qianyizh/ElasticReconstruction/blob/master/"
+            "FragmentOptimizer/OptApp.cpp "
+            "http://vladlen.info/papers/elastic-fragments.pdf. ");
+}
+
+void pybind_slac_definitions(py::module &m) {
+    auto m_slac = static_cast<py::module>(m.attr("slac"));
+    auto slac_optimizer_params = static_cast<py::class_<SLACOptimizerParams>>(
+            m_slac.attr("slac_optimizer_params"));
     py::detail::bind_copy_functions<SLACOptimizerParams>(slac_optimizer_params);
     slac_optimizer_params
             .def(py::init<const int, const float, const float, const float,
@@ -78,18 +94,18 @@ void pybind_slac_classes(py::module &m) {
                     "folder.")
             .def("__repr__", [](const SLACOptimizerParams &params) {
                 return fmt::format(
-                        "SLACOptimizerParams[max_iterations={:d}, "
+                        "SLACOptimizerParams(max_iterations={:d}, "
                         "voxel_size={:e}, distance_threshold={:e}, "
                         "fitness_threshold={:e}, regularizer_weight={:e}, "
-                        "device={}, slac_folder={}].",
+                        "device=open3d.core.Device(\"{}\"), "
+                        "slac_folder=\"{}\")",
                         params.max_iterations_, params.voxel_size_,
                         params.distance_threshold_, params.fitness_threshold_,
                         params.regularizer_weight_, params.device_.ToString(),
                         params.slac_folder_);
             });
-
-    py::class_<SLACDebugOption> slac_debug_option(m, "slac_debug_option",
-                                                  "SLAC debug options.");
+    auto slac_debug_option = static_cast<py::class_<SLACDebugOption>>(
+            m_slac.attr("slac_debug_option"));
     py::detail::bind_copy_functions<SLACDebugOption>(slac_debug_option);
     slac_debug_option
             .def(py::init<const bool, const int>(), "debug"_a = false,
@@ -102,23 +118,13 @@ void pybind_slac_classes(py::module &m) {
                            "will be skipped for visualization.")
             .def("__repr__", [](const SLACDebugOption &debug_option) {
                 return fmt::format(
-                        "SLACDebugOption[debug={}, "
-                        "debug_start_node_idx={:d}].",
-                        debug_option.debug_,
+                        "SLACDebugOption(debug={}, "
+                        "debug_start_node_idx={:d})",
+                        debug_option.debug_ ? "True" : "False",
                         debug_option.debug_start_node_idx_);
             });
-
-    py::class_<ControlGrid> control_grid(
-            m, "control_grid",
-            " ControlGrid is a spatially hashed voxel grid used for non-rigid "
-            "point cloud registration and TSDF integration. Each grid stores a "
-            "map from the initial grid location to the deformed location. You "
-            "can imagine a control grid as a jelly that is warped upon "
-            "perturbation with its overall shape preserved. "
-            "Reference: "
-            "https://github.com/qianyizh/ElasticReconstruction/blob/master/"
-            "FragmentOptimizer/OptApp.cpp "
-            "http://vladlen.info/papers/elastic-fragments.pdf. ");
+    auto control_grid =
+            static_cast<py::class_<ControlGrid>>(m_slac.attr("control_grid"));
     py::detail::bind_copy_functions<ControlGrid>(control_grid);
     control_grid.def(py::init<>())
             .def(py::init<float, int64_t, const core::Device>(), "grid_size"_a,
@@ -224,62 +230,41 @@ void pybind_slac_classes(py::module &m) {
                         "anchor_idx={:d}].",
                         control_grid.Size(), control_grid.GetAnchorIdx());
             });
-}
-
-// SLAC functions have similar arguments, sharing arg docstrings.
-static const std::unordered_map<std::string, std::string>
-        map_shared_argument_docstrings = {
-                {"fnames_processed",
-                 "List of filenames (str) for pre-processed pointcloud "
-                 "fragments."},
-                {"fragment_filenames",
-                 "List of filenames (str) for pointcloud fragments."},
-                {"fragment_pose_graph", "PoseGraph for pointcloud fragments"},
-                {"params",
-                 "slac_optimizer_params Parameters to tune in optimization."},
-                {"debug_option", "debug options."}};
-
-void pybind_slac_methods(py::module &m) {
-    m.def("save_correspondences_for_pointclouds",
-          &SaveCorrespondencesForPointClouds,
-          py::call_guard<py::gil_scoped_release>(),
-          "Read pose graph containing loop closures and odometry to compute "
-          "correspondences. Uses aggressive pruning -- reject any suspicious "
-          "pair.",
-          "fnames_processed"_a, "fragment_pose_graph"_a,
-          "params"_a = SLACOptimizerParams(),
-          "debug_option"_a = SLACDebugOption());
-    docstring::FunctionDocInject(m, "save_correspondences_for_pointclouds",
+    m_slac.def(
+            "save_correspondences_for_pointclouds",
+            &SaveCorrespondencesForPointClouds,
+            py::call_guard<py::gil_scoped_release>(),
+            "Read pose graph containing loop closures and odometry to compute "
+            "correspondences. Uses aggressive pruning -- reject any suspicious "
+            "pair.",
+            "fnames_processed"_a, "fragment_pose_graph"_a,
+            "params"_a = SLACOptimizerParams(),
+            "debug_option"_a = SLACDebugOption());
+    docstring::FunctionDocInject(m_slac, "save_correspondences_for_pointclouds",
                                  map_shared_argument_docstrings);
 
-    m.def("run_slac_optimizer_for_fragments", &RunSLACOptimizerForFragments,
-          "Simultaneous Localization and Calibration: Self-Calibration of "
-          "Consumer Depth Cameras, CVPR 2014 Qian-Yi Zhou and Vladlen Koltun "
-          "Estimate a shared control grid for all fragments for scene "
-          "reconstruction, implemented in "
-          "https://github.com/qianyizh/ElasticReconstruction. ",
-          "fragment_filenames"_a, "fragment_pose_graph"_a,
-          "params"_a = SLACOptimizerParams(),
-          "debug_option"_a = SLACDebugOption());
-    docstring::FunctionDocInject(m, "run_slac_optimizer_for_fragments",
+    m_slac.def(
+            "run_slac_optimizer_for_fragments", &RunSLACOptimizerForFragments,
+            "Simultaneous Localization and Calibration: Self-Calibration of "
+            "Consumer Depth Cameras, CVPR 2014 Qian-Yi Zhou and Vladlen Koltun "
+            "Estimate a shared control grid for all fragments for scene "
+            "reconstruction, implemented in "
+            "https://github.com/qianyizh/ElasticReconstruction. ",
+            "fragment_filenames"_a, "fragment_pose_graph"_a,
+            "params"_a = SLACOptimizerParams(),
+            "debug_option"_a = SLACDebugOption());
+    docstring::FunctionDocInject(m_slac, "run_slac_optimizer_for_fragments",
                                  map_shared_argument_docstrings);
 
-    m.def("run_rigid_optimizer_for_fragments", &RunRigidOptimizerForFragments,
-          "Extended ICP to simultaneously align multiple point clouds with "
-          "dense pairwise point-to-plane distances.",
-          "fragment_filenames"_a, "fragment_pose_graph"_a,
-          "params"_a = SLACOptimizerParams(),
-          "debug_option"_a = SLACDebugOption());
-    docstring::FunctionDocInject(m, "run_rigid_optimizer_for_fragments",
+    m_slac.def(
+            "run_rigid_optimizer_for_fragments", &RunRigidOptimizerForFragments,
+            "Extended ICP to simultaneously align multiple point clouds with "
+            "dense pairwise point-to-plane distances.",
+            "fragment_filenames"_a, "fragment_pose_graph"_a,
+            "params"_a = SLACOptimizerParams(),
+            "debug_option"_a = SLACDebugOption());
+    docstring::FunctionDocInject(m_slac, "run_rigid_optimizer_for_fragments",
                                  map_shared_argument_docstrings);
-}
-
-void pybind_slac(py::module &m) {
-    py::module m_submodule = m.def_submodule(
-            "slac",
-            "Tensor-based Simultaneous Localisation and Calibration pipeline.");
-    pybind_slac_classes(m_submodule);
-    pybind_slac_methods(m_submodule);
 }
 
 }  // namespace slac

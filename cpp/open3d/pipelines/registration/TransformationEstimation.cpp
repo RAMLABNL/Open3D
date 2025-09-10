@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/pipelines/registration/TransformationEstimation.h"
@@ -30,6 +11,7 @@
 
 #include "open3d/geometry/PointCloud.h"
 #include "open3d/utility/Eigen.h"
+#include "open3d/utility/Logging.h"
 
 namespace open3d {
 namespace pipelines {
@@ -59,6 +41,25 @@ Eigen::Matrix4d TransformationEstimationPointToPoint::ComputeTransformation(
         target_mat.block<3, 1>(0, i) = target.points_[corres[i][1]];
     }
     return Eigen::umeyama(source_mat, target_mat, with_scaling_);
+}
+
+std::tuple<std::shared_ptr<const geometry::PointCloud>,
+           std::shared_ptr<const geometry::PointCloud>>
+TransformationEstimationPointToPoint::InitializePointCloudsForTransformation(
+        const geometry::PointCloud &source,
+        const geometry::PointCloud &target,
+        double max_correspondence_distance) const {
+    std::shared_ptr<const geometry::PointCloud> source_initialized_c(
+            &source, [](const geometry::PointCloud *) {});
+    std::shared_ptr<const geometry::PointCloud> target_initialized_c(
+            &target, [](const geometry::PointCloud *) {});
+    if (!source_initialized_c || !target_initialized_c) {
+        utility::LogError(
+                "Internal error: InitializePointCloudsForTransformation "
+                "returns "
+                "nullptr.");
+    }
+    return std::make_tuple(source_initialized_c, target_initialized_c);
 }
 
 double TransformationEstimationPointToPlane::ComputeRMSE(
@@ -106,6 +107,29 @@ Eigen::Matrix4d TransformationEstimationPointToPlane::ComputeTransformation(
             utility::SolveJacobianSystemAndObtainExtrinsicMatrix(JTJ, JTr);
 
     return is_success ? extrinsic : Eigen::Matrix4d::Identity();
+}
+
+std::tuple<std::shared_ptr<const geometry::PointCloud>,
+           std::shared_ptr<const geometry::PointCloud>>
+TransformationEstimationPointToPlane::InitializePointCloudsForTransformation(
+        const geometry::PointCloud &source,
+        const geometry::PointCloud &target,
+        double max_correspondence_distance) const {
+    if (!target.HasNormals()) {
+        utility::LogError(
+                "PointToPlaneICP requires target pointcloud to have normals.");
+    }
+    std::shared_ptr<const geometry::PointCloud> source_initialized_c(
+            &source, [](const geometry::PointCloud *) {});
+    std::shared_ptr<const geometry::PointCloud> target_initialized_c(
+            &target, [](const geometry::PointCloud *) {});
+    if (!source_initialized_c || !target_initialized_c) {
+        utility::LogError(
+                "Internal error: InitializePointCloudsForTransformation "
+                "returns "
+                "nullptr.");
+    }
+    return std::make_tuple(source_initialized_c, target_initialized_c);
 }
 
 }  // namespace registration

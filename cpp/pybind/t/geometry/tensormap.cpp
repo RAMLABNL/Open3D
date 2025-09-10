@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/t/geometry/TensorMap.h"
@@ -135,7 +116,11 @@ static py::class_<Map, holder_type> bind_tensor_map(py::handle scope,
     return cl;
 }
 
-void pybind_tensormap(py::module &m) {
+void pybind_tensormap_declarations(py::module &m) {
+    auto tm = bind_tensor_map<TensorMap>(
+            m, "TensorMap", "Map of String to Tensor with a primary key.");
+}
+void pybind_tensormap_definitions(py::module &m) {
     // Bind to the generic dictionary interface such that it works the same as a
     // regular dictionary in Python, except that types are enforced. Supported
     // functions include `__bool__`, `__iter__`, `items`, `__getitem__`,
@@ -143,9 +128,8 @@ void pybind_tensormap(py::module &m) {
     // The `__delitem__` function is removed from bind_map, in bind_tensor_map,
     // and defined in this function, to use TensorMap::Erase, in order to
     // protect users from deleting the `private_key`.
-    auto tm = bind_tensor_map<TensorMap>(
-            m, "TensorMap", "Map of String to Tensor with a primary key.");
-
+    auto tm = static_cast<py::class_<TensorMap, std::unique_ptr<TensorMap>>>(
+            m.attr("TensorMap"));
     tm.def("__delitem__",
            [](TensorMap &m, const std::string &k) { return m.Erase(k); });
 

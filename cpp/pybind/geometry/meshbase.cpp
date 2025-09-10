@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/geometry/MeshBase.h"
@@ -34,16 +15,13 @@
 namespace open3d {
 namespace geometry {
 
-void pybind_meshbase(py::module &m) {
+void pybind_meshbase_declarations(py::module &m) {
     py::class_<MeshBase, PyGeometry3D<MeshBase>, std::shared_ptr<MeshBase>,
                Geometry3D>
             meshbase(m, "MeshBase",
                      "MeshBase class. Triangle mesh contains vertices. "
                      "Optionally, the mesh "
                      "may also contain vertex normals and vertex colors.");
-    py::detail::bind_default_constructor<MeshBase>(meshbase);
-    py::detail::bind_copy_functions<MeshBase>(meshbase);
-
     py::enum_<MeshBase::SimplificationContraction>(m,
                                                    "SimplificationContraction")
             .value("Average", MeshBase::SimplificationContraction::Average,
@@ -52,7 +30,6 @@ void pybind_meshbase(py::module &m) {
                    "The vertex positions are computed by minimizing the "
                    "distance to the adjacent triangle planes.")
             .export_values();
-
     py::enum_<MeshBase::FilterScope>(m, "FilterScope")
             .value("All", MeshBase::FilterScope::All,
                    "All properties (color, normal, vertex position) are "
@@ -64,7 +41,6 @@ void pybind_meshbase(py::module &m) {
             .value("Vertex", MeshBase::FilterScope::Vertex,
                    "Only the vertex positions are filtered.")
             .export_values();
-
     py::enum_<MeshBase::DeformAsRigidAsPossibleEnergy>(
             m, "DeformAsRigidAsPossibleEnergy")
             .value("Spokes", MeshBase::DeformAsRigidAsPossibleEnergy::Spokes,
@@ -74,6 +50,15 @@ void pybind_meshbase(py::module &m) {
                    MeshBase::DeformAsRigidAsPossibleEnergy::Smoothed,
                    "adds a rotation smoothing term to the rotations.")
             .export_values();
+}
+
+void pybind_meshbase_definitions(py::module &m) {
+    auto meshbase =
+            static_cast<py::class_<MeshBase, PyGeometry3D<MeshBase>,
+                                   std::shared_ptr<MeshBase>, Geometry3D>>(
+                    m.attr("MeshBase"));
+    py::detail::bind_default_constructor<MeshBase>(meshbase);
+    py::detail::bind_copy_functions<MeshBase>(meshbase);
 
     meshbase.def("__repr__",
                  [](const MeshBase &mesh) {
@@ -119,8 +104,6 @@ void pybind_meshbase(py::module &m) {
                                     {{"color", "RGB colors of vertices."}});
     docstring::ClassMethodDocInject(m, "MeshBase", "compute_convex_hull");
 }
-
-void pybind_meshbase_methods(py::module &m) {}
 
 }  // namespace geometry
 }  // namespace open3d

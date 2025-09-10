@@ -1,33 +1,15 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/core/linalg/Inverse.h"
 
 #include <unordered_map>
 
+#include "open3d/core/CUDAUtils.h"
 #include "open3d/core/linalg/LinalgHeadersCPU.h"
 
 namespace open3d {
@@ -57,6 +39,7 @@ void Inverse(const Tensor &A, Tensor &output) {
 
     if (device.IsCUDA()) {
 #ifdef BUILD_CUDA_MODULE
+        CUDAScopedDevice scoped_device(device);
         Tensor ipiv = Tensor::Zeros({n}, core::Int32, device);
         void *ipiv_data = ipiv.GetDataPtr();
 
@@ -70,6 +53,20 @@ void Inverse(const Tensor &A, Tensor &output) {
 
         InverseCUDA(A_data, ipiv_data, output_data, n, dtype, device);
         output = output.T();
+#else
+        utility::LogError("Unimplemented device.");
+#endif
+    } else if (device.IsSYCL()) {
+#ifdef BUILD_SYCL_MODULE
+        Tensor ipiv = Tensor::Empty({n}, core::Int64, device);
+        void *ipiv_data = ipiv.GetDataPtr();
+
+        // LAPACKE supports getri, A is in-place modified as output.
+        Tensor A_T = A.T().To(device, /*copy=*/true);
+        void *A_data = A_T.GetDataPtr();
+
+        InverseSYCL(A_data, ipiv_data, nullptr, n, dtype, device);
+        output = A_T.T();
 #else
         utility::LogError("Unimplemented device.");
 #endif

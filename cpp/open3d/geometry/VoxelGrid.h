@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -90,9 +71,21 @@ public:
     Eigen::Vector3d GetMinBound() const override;
     Eigen::Vector3d GetMaxBound() const override;
     Eigen::Vector3d GetCenter() const override;
+
+    /// Creates the axis-aligned bounding box around the object.
+    /// Further details in AxisAlignedBoundingBox::AxisAlignedBoundingBox()
     AxisAlignedBoundingBox GetAxisAlignedBoundingBox() const override;
+
+    /// Creates an oriented bounding box that is identical to the
+    /// axis-aligned bounding from GetAxisAlignedBoundingBox().
     OrientedBoundingBox GetOrientedBoundingBox(
             bool robust = false) const override;
+
+    /// Creates an oriented bounding box that is identical to the
+    /// axis-aligned bounding from GetAxisAlignedBoundingBox().
+    OrientedBoundingBox GetMinimalOrientedBoundingBox(
+            bool robust = false) const override;
+
     VoxelGrid &Transform(const Eigen::Matrix4d &transformation) override;
     VoxelGrid &Translate(const Eigen::Vector3d &translation,
                          bool relative = true) override;
@@ -129,6 +122,9 @@ public:
 
     /// Add a voxel with specified grid index and color.
     void AddVoxel(const Voxel &voxel);
+
+    /// Remove a voxel with specified grid index.
+    void RemoveVoxel(const Eigen::Vector3i &idx);
 
     /// Return a vector of 3D coordinates that define the indexed voxel cube.
     std::vector<Eigen::Vector3d> GetVoxelBoundingPoints(
@@ -193,18 +189,28 @@ public:
                                                   double height,
                                                   double depth);
 
+    /// \enum VoxelPoolingMode
+    ///
+    /// \brief Possible ways of determining voxel color from PointCloud.
+    enum class VoxelPoolingMode { AVG, MIN, MAX, SUM };
+
     /// Creates a VoxelGrid from a given PointCloud. The color value of a given
-    /// voxel is the average color value of the points that fall into it (if the
+    /// voxel is determined by the VoxelPoolingMode, e.g. by default the average
+    /// color value of the points that fall into it (if the
     /// PointCloud has colors).
     /// The bounds of the created VoxelGrid are computed from the PointCloud.
     ///
     /// \param input The input PointCloud.
     /// \param voxel_size Voxel size of of the VoxelGrid construction.
+    /// \param color_mode Mode of determining color for each voxel.
     static std::shared_ptr<VoxelGrid> CreateFromPointCloud(
-            const PointCloud &input, double voxel_size);
+            const PointCloud &input,
+            double voxel_size,
+            VoxelPoolingMode color_mode = VoxelPoolingMode::AVG);
 
     /// Creates a VoxelGrid from a given PointCloud. The color value of a given
-    /// voxel is the average color value of the points that fall into it (if the
+    /// voxel is determined by the VoxelPoolingMode, e.g. by default the average
+    /// color value of the points that fall into it (if the
     /// PointCloud has colors).
     /// The bounds of the created VoxelGrid are defined by the given parameters.
     ///
@@ -212,11 +218,13 @@ public:
     /// \param voxel_size Voxel size of of the VoxelGrid construction.
     /// \param min_bound Minimum boundary point for the VoxelGrid to create.
     /// \param max_bound Maximum boundary point for the VoxelGrid to create.
+    /// \param color_mode Mode of determining color for each voxel.
     static std::shared_ptr<VoxelGrid> CreateFromPointCloudWithinBounds(
             const PointCloud &input,
             double voxel_size,
             const Eigen::Vector3d &min_bound,
-            const Eigen::Vector3d &max_bound);
+            const Eigen::Vector3d &max_bound,
+            VoxelPoolingMode color_mode = VoxelPoolingMode::AVG);
 
     /// Creates a VoxelGrid from a given TriangleMesh. No color information is
     /// converted. The bounds of the created VoxelGrid are computed from the
@@ -249,7 +257,7 @@ public:
 public:
     /// Size of the voxel.
     double voxel_size_ = 0.0;
-    /// Coorindate of the origin point.
+    /// Coordinate of the origin point.
     Eigen::Vector3d origin_ = Eigen::Vector3d::Zero();
     /// Voxels contained in voxel grid
     std::unordered_map<Eigen::Vector3i,
@@ -296,6 +304,64 @@ public:
     int num_of_points_;
     Eigen::Vector3i voxel_index_;
     Eigen::Vector3d color_;
+};
+
+/// \class AggColorVoxel
+///
+/// \brief Class to aggregate color values from different votes in one voxel
+/// Can be used to compute min, max, average and sum voxel color.
+class AggColorVoxel {
+public:
+    AggColorVoxel()
+        : num_of_points_(0),
+          color_(0.0, 0.0, 0.0),
+          min_color_(Eigen::Vector3d::Constant(
+                  std::numeric_limits<double>::max())),
+          max_color_(Eigen::Vector3d::Constant(
+                  std::numeric_limits<double>::lowest())) {}
+
+public:
+    void Add(const Eigen::Vector3i &voxel_index) {
+        if (num_of_points_ > 0 && voxel_index != voxel_index_) {
+            utility::LogWarning(
+                    "Tried to aggregate ColorVoxel with different "
+                    "voxel_index");
+        }
+        voxel_index_ = voxel_index;
+    }
+
+    void Add(const Eigen::Vector3i &voxel_index, const Eigen::Vector3d &color) {
+        Add(voxel_index);
+        color_ += color;
+        num_of_points_++;
+        min_color_ = min_color_.cwiseMin(color);
+        max_color_ = max_color_.cwiseMax(color);
+    }
+
+    Eigen::Vector3i GetVoxelIndex() const { return voxel_index_; }
+
+    Eigen::Vector3d GetAverageColor() const {
+        if (num_of_points_ > 0) {
+            return color_ / double(num_of_points_);
+        } else {
+            return color_;
+        }
+    }
+
+    Eigen::Vector3d GetMinColor() const { return min_color_; }
+
+    Eigen::Vector3d GetMaxColor() const { return max_color_; }
+
+    Eigen::Vector3d GetSumColor() const { return color_; }
+
+public:
+    int num_of_points_;
+    Eigen::Vector3i voxel_index_;
+    Eigen::Vector3d color_;
+
+private:
+    Eigen::Vector3d min_color_;
+    Eigen::Vector3d max_color_;
 };
 
 }  // namespace geometry

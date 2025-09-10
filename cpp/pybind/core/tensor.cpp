@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/core/Tensor.h"
@@ -269,11 +250,14 @@ static void BindTensorFullCreation(py::module& m, py::class_<Tensor>& tensor) {
             "device"_a = py::none());
 }
 
-void pybind_core_tensor(py::module& m) {
+void pybind_core_tensor_declarations(py::module& m) {
     py::class_<Tensor> tensor(
             m, "Tensor",
             "A Tensor is a view of a data Blob with shape, stride, data_ptr.");
-
+    m.attr("capsule") = py::module_::import("typing").attr("Any");
+}
+void pybind_core_tensor_definitions(py::module& m) {
+    auto tensor = static_cast<py::class_<Tensor>>(m.attr("Tensor"));
     // o3c.Tensor(np.array([[0, 1, 2], [3, 4, 5]]), dtype=None, device=None).
     tensor.def(py::init([](const py::array& np_array,
                            utility::optional<Dtype> dtype,
@@ -410,22 +394,22 @@ void pybind_core_tensor(py::module& m) {
             },
             "Create a 1D tensor with evenly spaced values in the given "
             "interval.",
-            "stop"_a, "dtype"_a = py::none(), "device"_a = py::none());
+            "stop"_a, py::pos_only(), py::kw_only(), "dtype"_a = py::none(),
+            "device"_a = py::none());
     tensor.def_static(
             "arange",
-            [](utility::optional<int64_t> start, int64_t stop,
-               utility::optional<int64_t> step, utility::optional<Dtype> dtype,
+            [](int64_t start, int64_t stop, utility::optional<int64_t> step,
+               utility::optional<Dtype> dtype,
                utility::optional<Device> device) {
                 return Tensor::Arange(
-                        start.has_value() ? start.value() : 0, stop,
-                        step.has_value() ? step.value() : 1,
+                        start, stop, step.has_value() ? step.value() : 1,
                         dtype.has_value() ? dtype.value() : core::Int64,
                         device.has_value() ? device.value() : Device("CPU:0"));
             },
             "Create a 1D tensor with evenly spaced values in the given "
             "interval.",
-            "start"_a = py::none(), "stop"_a, "step"_a = py::none(),
-            "dtype"_a = py::none(), "device"_a = py::none());
+            "start"_a, "stop"_a, "step"_a = py::none(), "dtype"_a = py::none(),
+            py::kw_only(), "device"_a = py::none());
 
     // Tensor creation from arange for float.
     tensor.def_static(
@@ -439,22 +423,22 @@ void pybind_core_tensor(py::module& m) {
             },
             "Create a 1D tensor with evenly spaced values in the given "
             "interval.",
-            "stop"_a, "dtype"_a = py::none(), "device"_a = py::none());
+            "stop"_a, py::pos_only(), py::kw_only(), "dtype"_a = py::none(),
+            "device"_a = py::none());
     tensor.def_static(
             "arange",
-            [](utility::optional<double> start, double stop,
-               utility::optional<double> step, utility::optional<Dtype> dtype,
+            [](double start, double stop, utility::optional<double> step,
+               utility::optional<Dtype> dtype,
                utility::optional<Device> device) {
                 return Tensor::Arange(
-                        start.has_value() ? start.value() : 0.0, stop,
-                        step.has_value() ? step.value() : 1.0,
+                        start, stop, step.has_value() ? step.value() : 1.0,
                         dtype.has_value() ? dtype.value() : core::Float64,
                         device.has_value() ? device.value() : Device("CPU:0"));
             },
             "Create a 1D tensor with evenly spaced values in the given "
             "interval.",
-            "start"_a = py::none(), "stop"_a, "step"_a = py::none(),
-            "dtype"_a = py::none(), "device"_a = py::none());
+            "start"_a, "stop"_a, "step"_a = py::none(), "dtype"_a = py::none(),
+            py::kw_only(), "device"_a = py::none());
 
     tensor.def(
             "append",
@@ -860,6 +844,7 @@ Ref:
     tensor.def("cos_", &Tensor::Cos_);
     tensor.def("neg", &Tensor::Neg);
     tensor.def("neg_", &Tensor::Neg_);
+    tensor.def("__neg__", &Tensor::Neg);
     tensor.def("exp", &Tensor::Exp);
     tensor.def("exp_", &Tensor::Exp_);
     tensor.def("abs", &Tensor::Abs);

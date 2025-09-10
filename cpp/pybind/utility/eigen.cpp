@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "pybind/docstring.h"
@@ -325,8 +306,17 @@ py::class_<Vector, holder_type> pybind_eigen_vector_of_matrix(
 namespace open3d {
 namespace utility {
 
-void pybind_eigen(py::module &m) {
+void pybind_eigen_declarations(py::module &m) {
     auto intvector = pybind_eigen_vector_of_scalar<int>(m, "IntVector");
+    auto doublevector =
+            pybind_eigen_vector_of_scalar<double>(m, "DoubleVector");
+    auto vector3dvector = pybind_eigen_vector_of_vector<Eigen::Vector3d>(
+            m, "Vector3dVector", "std::vector<Eigen::Vector3d>",
+            py::py_array_to_vectors_double<Eigen::Vector3d>);
+}
+void pybind_eigen_definitions(py::module &m) {
+    auto intvector = static_cast<decltype(pybind_eigen_vector_of_scalar<int>(
+            m, "IntVector"))>(m.attr("IntVector"));
     intvector.attr("__doc__") = docstring::static_property(
             py::cpp_function([](py::handle arg) -> std::string {
                 return R"(Convert int32 numpy array of shape ``(n,)`` to Open3D format.)";
@@ -334,16 +324,18 @@ void pybind_eigen(py::module &m) {
             py::none(), py::none(), "");
 
     auto doublevector =
-            pybind_eigen_vector_of_scalar<double>(m, "DoubleVector");
+            static_cast<decltype(pybind_eigen_vector_of_scalar<double>(
+                    m, "DoubleVector"))>(m.attr("DoubleVector"));
     doublevector.attr("__doc__") = docstring::static_property(
             py::cpp_function([](py::handle arg) -> std::string {
                 return R"(Convert float64 numpy array of shape ``(n,)`` to Open3D format.)";
             }),
             py::none(), py::none(), "");
-
-    auto vector3dvector = pybind_eigen_vector_of_vector<Eigen::Vector3d>(
-            m, "Vector3dVector", "std::vector<Eigen::Vector3d>",
-            py::py_array_to_vectors_double<Eigen::Vector3d>);
+    auto vector3dvector =
+            static_cast<decltype(pybind_eigen_vector_of_vector<Eigen::Vector3d>(
+                    m, "Vector3dVector", "std::vector<Eigen::Vector3d>",
+                    py::py_array_to_vectors_double<Eigen::Vector3d>))>(
+                    m.attr("Vector3dVector"));
     vector3dvector.attr("__doc__") = docstring::static_property(
             py::cpp_function([](py::handle arg) -> std::string {
                 return R"(Convert float64 numpy array of shape ``(n, 3)`` to Open3D format.

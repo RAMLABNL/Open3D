@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/t/pipelines/registration/RobustKernel.h"
@@ -34,8 +15,11 @@ namespace t {
 namespace pipelines {
 namespace registration {
 
-void pybind_robust_kernel_classes(py::module& m) {
-    py::enum_<RobustKernelMethod>(m, "RobustKernelMethod",
+void pybind_robust_kernel_declarations(py::module& m) {
+    py::module m_robust_kernel = m.def_submodule(
+            "robust_kernel",
+            "Tensor-based robust kernel for outlier rejection.");
+    py::enum_<RobustKernelMethod>(m_robust_kernel, "RobustKernelMethod",
                                   "Robust kernel method for outlier rejection.")
             .value("L2Loss", RobustKernelMethod::L2Loss)
             .value("L1Loss", RobustKernelMethod::L1Loss)
@@ -45,9 +29,7 @@ void pybind_robust_kernel_classes(py::module& m) {
             .value("TukeyLoss", RobustKernelMethod::TukeyLoss)
             .value("GeneralizedLoss", RobustKernelMethod::GeneralizedLoss)
             .export_values();
-
-    // open3d.t.pipelines.odometry.OdometryConvergenceCriteria
-    py::class_<RobustKernel> robust_kernel(m, "RobustKernel",
+    py::class_<RobustKernel> robust_kernel(m_robust_kernel, "RobustKernel",
                                            R"(
 Base class that models a robust kernel for outlier rejection. The virtual
 function ``weight()`` must be implemented in derived classes.
@@ -119,6 +101,12 @@ Philippe Babin et al.
 For more information please also see: **"Adaptive Robust Kernels for
 Non-Linear Least Squares Problems"**, by Nived Chebrolu et al.
 )");
+}
+
+void pybind_robust_kernel_definitions(py::module& m) {
+    auto m_robust_kernel = static_cast<py::module>(m.attr("robust_kernel"));
+    auto robust_kernel = static_cast<py::class_<RobustKernel>>(
+            m_robust_kernel.attr("RobustKernel"));
     py::detail::bind_copy_functions<RobustKernel>(robust_kernel);
     robust_kernel
             .def(py::init([](const RobustKernelMethod type,
@@ -127,7 +115,9 @@ Non-Linear Least Squares Problems"**, by Nived Chebrolu et al.
                      return new RobustKernel(type, scaling_parameter,
                                              shape_parameter);
                  }),
-                 "type"_a = RobustKernelMethod::L2Loss,
+                 py::arg_v("type", RobustKernelMethod::L2Loss,
+                           "open3d.t.pipelines.registration.RobustKernelMethod."
+                           "L2Loss"),
                  "scaling_parameter"_a = 1.0, "shape_parameter"_a = 1.0)
             .def_readwrite("type", &RobustKernel::type_, "Loss type.")
             .def_readwrite("scaling_parameter",
@@ -141,13 +131,6 @@ Non-Linear Least Squares Problems"**, by Nived Chebrolu et al.
                         "shape_parameter_={:e}].",
                         rk.scaling_parameter_, rk.shape_parameter_);
             });
-}
-
-void pybind_robust_kernels(py::module& m) {
-    py::module m_submodule = m.def_submodule(
-            "robust_kernel",
-            "Tensor-based robust kernel for outlier rejection.");
-    pybind_robust_kernel_classes(m_submodule);
 }
 
 }  // namespace registration

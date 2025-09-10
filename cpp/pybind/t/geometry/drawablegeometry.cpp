@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/t/geometry/DrawableGeometry.h"
@@ -32,12 +13,17 @@ namespace open3d {
 namespace t {
 namespace geometry {
 
-void pybind_drawable_geometry_class(py::module& m) {
-    // open3d.t.geometry.DrawableGeometry
+void pybind_drawable_geometry_class_declarations(py::module& m) {
     py::class_<DrawableGeometry, std::shared_ptr<DrawableGeometry>>
             drawable_geometry(
                     m, "DrawableGeometry",
                     "Base class for geometry types which can be visualized.");
+}
+void pybind_drawable_geometry_class_definitions(py::module& m) {
+    // open3d.t.geometry.DrawableGeometry
+    auto drawable_geometry = static_cast<
+            py::class_<DrawableGeometry, std::shared_ptr<DrawableGeometry>>>(
+            m.attr("DrawableGeometry"));
     drawable_geometry.def("has_valid_material", &DrawableGeometry::HasMaterial,
                           "Returns true if the geometry's material is valid.");
     drawable_geometry.def_property(

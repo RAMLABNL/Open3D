@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/t/geometry/LineSet.h"
@@ -38,7 +19,7 @@ namespace open3d {
 namespace t {
 namespace geometry {
 
-void pybind_lineset(py::module& m) {
+void pybind_lineset_declarations(py::module& m) {
     py::class_<LineSet, PyGeometry<LineSet>, std::shared_ptr<LineSet>, Geometry,
                DrawableGeometry>
             line_set(m, "LineSet", R"(
@@ -91,7 +72,12 @@ The attributes of the line set have different levels::
     lineset.point.labels = o3d.core.Tensor(...)
     lineset.line.features = o3d.core.Tensor(...)
 )");
+}
 
+void pybind_lineset_definitions(py::module& m) {
+    auto line_set = static_cast<
+            py::class_<LineSet, PyGeometry<LineSet>, std::shared_ptr<LineSet>,
+                       Geometry, DrawableGeometry>>(m.attr("LineSet"));
     // Constructors.
     line_set.def(py::init<const core::Device&>(),
                  "device"_a = core::Device("CPU:0"),
@@ -110,6 +96,7 @@ and ``device`` as the tensor. The device for ``point_positions`` must be consist
              {"line_indices",
               "A tensor with element shape (2,) and Int dtype."}});
 
+    py::detail::bind_copy_functions<LineSet>(line_set);
     // Pickling support.
     line_set.def(py::pickle(
             [](const LineSet& line_set) {
@@ -260,7 +247,9 @@ transformation as :math:`P = R(P) + t`)");
                  &LineSet::GetAxisAlignedBoundingBox,
                  "Create an axis-aligned bounding box from point attribute "
                  "'positions'.");
-
+    line_set.def("get_oriented_bounding_box", &LineSet::GetOrientedBoundingBox,
+                 "Create an oriented bounding box from point attribute "
+                 "'positions'.");
     line_set.def("extrude_rotation", &LineSet::ExtrudeRotation, "angle"_a,
                  "axis"_a, "resolution"_a = 16, "translation"_a = 0.0,
                  "capping"_a = true,
@@ -268,12 +257,9 @@ transformation as :math:`P = R(P) + t`)");
 
 Args:
     angle (float): The rotation angle in degree.
-
     axis (open3d.core.Tensor): The rotation axis.
-
     resolution (int): The resolution defines the number of intermediate sweeps
         about the rotation axis.
-
     translation (float): The translation along the rotation axis.
 
 Returns:
@@ -281,7 +267,6 @@ Returns:
 
 
 Example:
-
     This code generates a spring from a single line::
 
         import open3d as o3d
@@ -297,9 +282,7 @@ Example:
                  R"(Sweeps the line set along a direction vector.
 
 Args:
-
     vector (open3d.core.Tensor): The direction vector.
-
     scale (float): Scalar factor which essentially scales the direction vector.
 
 Returns:
@@ -307,14 +290,48 @@ Returns:
 
 
 Example:
-
     This code generates an L-shaped mesh::
+
         import open3d as o3d
 
         lines = o3d.t.geometry.LineSet([[1.0,0.0,0.0],[0,0,0],[0,0,1]], [[0,1],[1,2]])
         mesh = lines.extrude_linear([0,1,0])
         o3d.visualization.draw([{'name': 'L', 'geometry': mesh}])
 
+)");
+    line_set.def("paint_uniform_color", &LineSet::PaintUniformColor, "color"_a,
+                 "Assigns unifom color to all the lines of the LineSet. "
+                 "Floating color values are clipped between 00 and 1.0. Input "
+                 "`color` should be a (3,) shape tensor.");
+    line_set.def_static(
+            "create_camera_visualization", &LineSet::CreateCameraVisualization,
+            "view_width_px"_a, "view_height_px"_a, "intrinsic"_a, "extrinsic"_a,
+            "scale"_a = 1.f,
+            py::arg_v(
+                    "color", core::Tensor({}, core::Float32),
+                    "open3d.core.Tensor([], dtype=open3d.core.Dtype.Float32)"),
+            R"(Factory function to create a LineSet from intrinsic and extrinsic
+matrices. Camera reference frame is shown with XYZ axes in RGB.
+
+Args:
+    view_width_px (int): The width of the view, in pixels.
+    view_height_px (int): The height of the view, in pixels.
+    intrinsic (open3d.core.Tensor): The intrinsic matrix {3,3} shape.
+    extrinsic (open3d.core.Tensor): The extrinsic matrix {4,4} shape.
+    scale (float): camera scale
+    color (open3d.core.Tensor): color with float32 and shape {3}. Default is blue.
+
+Example:
+
+    Draw a purple camera frame with XYZ axes in RGB::
+
+        import open3d.core as o3c
+        from open3d.t.geometry import LineSet
+        from open3d.visualization import draw
+        K = o3c.Tensor([[512, 0, 512], [0, 512, 512], [0, 0, 1]], dtype=o3c.float32)
+        T = o3c.Tensor.eye(4, dtype=o3c.float32)
+        ls = LineSet.create_camera_visualization(1024, 1024, K, T, 1, [0.8, 0.2, 0.8])
+        draw([ls])
 )");
 }
 

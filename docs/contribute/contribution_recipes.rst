@@ -16,7 +16,7 @@ Recommended procedure
 3. Check existing classes, examples, and related code.
 4. Fork Open3D on `GitHub <https://github.com/isl-org/Open3D>`_.
 5. Create new features in your fork. Do not forget unit tests and documentation. Double-check the :ref:`style_guide`.
-6. Make a pull request to the `master branch <https://github.com/isl-org/Open3D/tree/master>`_.
+6. Make a pull request to the `main branch <https://github.com/isl-org/Open3D/tree/main>`_.
 7. Make sure your PR passes the CI tests. If it doesn’t, fix the code until it builds and passes the CI tests.
 8. Your PR will be assigned to reviewers.
 9. Engage with your reviewers during the review process. Address issues or concerns raised during the review. Don’t let the review die.
@@ -29,7 +29,7 @@ Dos
 +-------------------------------------------------------------------------------------------------------------+
 | [DO] Follow the :ref:`style_guide` and install the required tools                                           |
 +-------------------------------------------------------------------------------------------------------------+
-| [DO] Use C++14 features when contributing C++ code                                                          |
+| [DO] Use C++17 features when contributing C++ code                                                          |
 +-------------------------------------------------------------------------------------------------------------+
 | [DO] Remember to provide Python bindings when adding new C++ core functionalities                           |
 +-------------------------------------------------------------------------------------------------------------+
@@ -223,30 +223,21 @@ Case 2: When documenting Python bindings
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 * First, complete the Python binding code following the guides from `Pybind11 Docs <https://pybind11.readthedocs.io/en/stable/basics.html>`_. Make sure to write the high-level docstrings for the classes and functions. Also use ``"param_name"_a`` to denote function parameters.  Use standard RST based docstring syntax (`Google style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`__) as explained `here <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html>`_ and `there <https://www.python.org/dev/peps/pep-0257/>`_.
-* Use the ``docstring::ClassMethodDocInject()`` or ``docstring::FunctionDocInject()`` to insert parameter docs.
-* Example binding and docstrings for the ``Calculator`` class:
+* Writing docstrings that render as expected can be tricky. The following example docstring points out some of the pitfalls to watch out for:
 
-..  code:: cpp
+.. tabs::
 
-    py::class_<Calculator> calculator(
-                m, "Calculator",
-                "Calculator class performs numerical computations.");
-    calculator.def("add", &Calculator::Add,
-                   "Performs ``a`` plus ``b``, i.e. :math:`c=a+b` Unlike "
-                   ":math:`open3d.Calculator.sub`, "
-                   ":math:`open3d.Calculator.add` is "
-                   "commutative.",
-                                "a"_a, "b"_a);
-    calculator.def("sub", &Calculator::Add, "Subtracts ``b`` from ``a``,"
-                   " i.e. :math:`c=a-b`",
-                   "a"_a,
-                   "b"_a);
-    docstring::ClassMethodDocInject(m, "Calculator", "add",
-                                    {{"a", "LHS operand for summation."},
-                                     {"b", "RHS operand for summation."}});
-    docstring::ClassMethodDocInject(m, "Calculator", "sub",
-                                    {{"a", "LHS operand for subtraction."},
-                                     {"b", "RHS operand for subtraction."}});
+   .. tab:: Docstring example
+
+      .. literalinclude:: ./example_python_docstring.rst
+         :language: rest
+
+   .. tab:: Rendered result
+
+      .. image:: ../../_static/contribute/example_python_docstring.webp
+         :width: 800
+         :alt: Rendered docstring
+      
 
 Case 3: When documenting pure Python code (no bindings)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -264,7 +255,7 @@ Case 4: When adding a Python tutorial
 .. note::
    When you commit a ipynb notebook file make sure to remove the output cells
    to keep the commit sizes small.
-   You can use the script ``docs/jupyter/jupyter_strip_output.sh`` for
+   You can use the script ``docs/jupyter/jupyter_strip_output.py`` for
    stripping the output cells of all tutorials.
 
 Dos

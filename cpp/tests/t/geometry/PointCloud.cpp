@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/t/geometry/PointCloud.h"
@@ -43,12 +24,13 @@
 namespace open3d {
 namespace tests {
 
-class PointCloudPermuteDevices : public PermuteDevices {};
-INSTANTIATE_TEST_SUITE_P(PointCloud,
-                         PointCloudPermuteDevices,
-                         testing::ValuesIn(PermuteDevices::TestCases()));
+class PointCloudPermuteDevices : public PermuteDevicesWithSYCL {};
+INSTANTIATE_TEST_SUITE_P(
+        PointCloud,
+        PointCloudPermuteDevices,
+        testing::ValuesIn(PermuteDevicesWithSYCL::TestCases()));
 
-class PointCloudPermuteDevicePairs : public PermuteDevicePairs {};
+class PointCloudPermuteDevicePairs : public PermuteDevicePairsWithSYCL {};
 INSTANTIATE_TEST_SUITE_P(
         PointCloud,
         PointCloudPermuteDevicePairs,
@@ -189,6 +171,8 @@ TEST_P(PointCloudPermuteDevices, Copy) {
 
 TEST_P(PointCloudPermuteDevices, Transform) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
+
     core::Dtype dtype = core::Float32;
     t::geometry::PointCloud pcd(device);
     core::Tensor transformation(
@@ -244,6 +228,7 @@ TEST_P(PointCloudPermuteDevices, Scale) {
 
 TEST_P(PointCloudPermuteDevices, Rotate) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
     core::Dtype dtype = core::Float32;
     t::geometry::PointCloud pcd(device);
     core::Tensor rotation(std::vector<float>{1, 1, 0, 0, 1, 1, 0, 1, 0}, {3, 3},
@@ -264,6 +249,7 @@ TEST_P(PointCloudPermuteDevices, Rotate) {
 
 TEST_P(PointCloudPermuteDevices, NormalizeNormals) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     core::Tensor points = core::Tensor::Init<double>({{0, 0, 0},
                                                       {0, 0, 1},
@@ -297,6 +283,7 @@ TEST_P(PointCloudPermuteDevices, NormalizeNormals) {
 
 TEST_P(PointCloudPermuteDevices, EstimateNormals) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     core::Tensor points = core::Tensor::Init<double>({{0, 0, 0},
                                                       {0, 0, 1},
@@ -337,6 +324,7 @@ TEST_P(PointCloudPermuteDevices, EstimateNormals) {
 
 TEST_P(PointCloudPermuteDevices, OrientNormalsToAlignWithDirection) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     core::Tensor points = core::Tensor::Init<double>({{0, 0, 0},
                                                       {0, 0, 1},
@@ -376,6 +364,7 @@ TEST_P(PointCloudPermuteDevices, OrientNormalsToAlignWithDirection) {
 
 TEST_P(PointCloudPermuteDevices, OrientNormalsTowardsCameraLocation) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     core::Tensor points = core::Tensor::Init<double>(
             {{0, 0, 0}, {0, 1, 0}, {1, 0, 0}, {1, 1, 0}}, device);
@@ -663,6 +652,7 @@ TEST_P(PointCloudPermuteDevices, CreateFromRGBDImage) {
     using ::testing::UnorderedElementsAreArray;
 
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
     float depth_scale = 1000.f, depth_max = 3.f;
     int stride = 1;
     core::Tensor im_depth =
@@ -710,11 +700,12 @@ TEST_P(PointCloudPermuteDevices, CreateFromRGBDImage) {
 
 TEST_P(PointCloudPermuteDevices, CreateFromRGBDOrDepthImageWithNormals) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
-    if (!t::geometry::Image::HAVE_IPPICV &&
+    if (!t::geometry::Image::HAVE_IPP &&
         device.GetType() ==
                 core::Device::DeviceType::CPU) {  // FilterBilateral on CPU
-                                                  // needs IPPICV
+                                                  // needs IPP
         return;
     }
 
@@ -910,6 +901,7 @@ TEST_P(PointCloudPermuteDevices, SelectByIndex) {
 
 TEST_P(PointCloudPermuteDevices, VoxelDownSample) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     // Value test
     t::geometry::PointCloud pcd_small(
@@ -920,7 +912,7 @@ TEST_P(PointCloudPermuteDevices, VoxelDownSample) {
                                       device));
     auto pcd_small_down = pcd_small.VoxelDownSample(1);
     EXPECT_TRUE(pcd_small_down.GetPointPositions().AllClose(
-            core::Tensor::Init<float>({{0, 0, 0}}, device)));
+            core::Tensor::Init<float>({{0.375, 0.375, 0.575}}, device)));
 }
 
 TEST_P(PointCloudPermuteDevices, UniformDownSample) {
@@ -973,15 +965,22 @@ TEST_P(PointCloudPermuteDevices, FarthestPointDownSample) {
                                        {0, 1.0, 1.0},
                                        {1.0, 1.0, 1.5}},
                                       device));
+
     auto pcd_small_down = pcd_small.FarthestPointDownSample(4);
-    EXPECT_TRUE(pcd_small_down.GetPointPositions().AllClose(
-            core::Tensor::Init<float>(
-                    {{0, 2.0, 0}, {1.0, 1.0, 0}, {1.0, 0, 1.0}, {0, 1.0, 1.0}},
-                    device)));
+    auto expected = core::Tensor::Init<float>(
+            {{0, 2.0, 0}, {1.0, 1.0, 0}, {1.0, 0, 1.0}, {0, 1.0, 1.0}}, device);
+
+    auto pcd_small_down_2 = pcd_small.FarthestPointDownSample(4, 4);
+    auto expected_2 = core::Tensor::Init<float>(
+            {{0, 2.0, 0}, {1.0, 1.0, 0}, {0, 0, 1.0}, {1.0, 1.0, 1.5}}, device);
+
+    EXPECT_TRUE(pcd_small_down.GetPointPositions().AllClose(expected));
+    EXPECT_TRUE(pcd_small_down_2.GetPointPositions().AllClose(expected_2));
 }
 
 TEST_P(PointCloudPermuteDevices, RemoveRadiusOutliers) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     const t::geometry::PointCloud pcd_small(
             core::Tensor::Init<float>({{1.0, 1.0, 1.0},
@@ -1007,6 +1006,7 @@ TEST_P(PointCloudPermuteDevices, RemoveRadiusOutliers) {
 
 TEST_P(PointCloudPermuteDevices, RemoveStatisticalOutliers) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     data::PCDPointCloud sample_pcd_data;
     geometry::PointCloud pcd_legacy;
@@ -1025,6 +1025,7 @@ TEST_P(PointCloudPermuteDevices, RemoveStatisticalOutliers) {
 
 TEST_P(PointCloudPermuteDevices, RemoveDuplicatedPoints) {
     core::Device device = GetParam();
+    if (device.IsSYCL()) GTEST_SKIP() << "Not Implemented!";
 
     const t::geometry::PointCloud pcd_small(
             core::Tensor::Init<float>({{1.0, 1.0, 1.0},

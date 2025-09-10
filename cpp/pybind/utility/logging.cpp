@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/utility/Logging.h"
@@ -32,7 +13,7 @@
 namespace open3d {
 namespace utility {
 
-void pybind_logging(py::module& m) {
+void pybind_logging_declarations(py::module& m) {
     py::enum_<VerbosityLevel> vl(m, "VerbosityLevel", py::arithmetic(),
                                  "VerbosityLevel");
     vl.value("Error", VerbosityLevel::Error)
@@ -46,7 +27,13 @@ void pybind_logging(py::module& m) {
                 return "Enum class for VerbosityLevel.";
             }),
             py::none(), py::none(), "");
-
+    py::class_<VerbosityContextManager> verbosity_context_manager(
+            m, "VerbosityContextManager",
+            "A context manager to "
+            "temporally change the "
+            "verbosity level of Open3D");
+}
+void pybind_logging_definitions(py::module& m) {
     m.def("set_verbosity_level", &SetVerbosityLevel,
           "Set global verbosity level of Open3D", py::arg("verbosity_level"));
     docstring::FunctionDocInject(
@@ -63,11 +50,10 @@ void pybind_logging(py::module& m) {
         utility::LogInfo("Resetting default logger to print to terminal.");
         utility::Logger::GetInstance().ResetPrintFunction();
     });
-
-    py::class_<VerbosityContextManager>(m, "VerbosityContextManager",
-                                        "A context manager to "
-                                        "temporally change the "
-                                        "verbosity level of Open3D")
+    auto verbosity_context_manager =
+            static_cast<py::class_<VerbosityContextManager>>(
+                    m.attr("VerbosityContextManager"));
+    verbosity_context_manager
             .def(py::init<VerbosityLevel>(),
                  "Create a VerbosityContextManager with a given VerbosityLevel",
                  "level"_a)

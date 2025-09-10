@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -70,7 +51,7 @@ public:
     /// \param knn Number of nearest neighbor to search.
     /// \return Pair of Tensors: (indices, distances):
     /// - indices: Tensor of shape {n, knn}, with dtype Int32.
-    /// - distainces: Tensor of shape {n, knn}, same dtype with dataset_points.
+    /// - distances: Tensor of shape {n, knn}, same dtype with dataset_points.
     virtual std::pair<Tensor, Tensor> SearchKnn(const Tensor &query_points,
                                                 int knn) const = 0;
 
@@ -80,7 +61,7 @@ public:
     /// dtype with dataset_points.
     /// \param radii list of radius. Must be 1D, with shape {n, }.
     /// \return Tuple of Tensors: (indices, distances, num_neighbors):
-    /// - indicecs: Tensor of shape {total_num_neighbors,}, dtype Int32.
+    /// - indices: Tensor of shape {total_num_neighbors,}, dtype Int32.
     /// - distances: Tensor of shape {total_num_neighbors,}, same dtype with
     /// dataset_points.
     /// - num_neighbors: Tensor of shape {n,}, dtype Int32.
@@ -95,7 +76,7 @@ public:
     /// dtype with dataset_points.
     /// \param radius Radius.
     /// \return Tuple of Tensors, (indices, distances, num_neighbors):
-    /// - indicecs: Tensor of shape {total_num_neighbors,}, dtype Int32.
+    /// - indices: Tensor of shape {total_num_neighbors,}, dtype Int32.
     /// - distances: Tensor of shape {total_num_neighbors,}, same dtype with
     /// dataset_points.
     /// - num_neighbors: Tensor of shape {n}, dtype Int32.

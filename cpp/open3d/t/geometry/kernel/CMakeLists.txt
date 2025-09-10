@@ -1,10 +1,14 @@
 open3d_ispc_add_library(tgeometry_kernel OBJECT)
+set_target_properties(tgeometry_kernel PROPERTIES CXX_VISIBILITY_PRESET "hidden")
+
 
 target_sources(tgeometry_kernel PRIVATE
     Image.cpp
     ImageCPU.cpp
+    PCAPartition.cpp
     PointCloud.cpp
     PointCloudCPU.cpp
+    Metrics.cpp
     TriangleMesh.cpp
     TriangleMeshCPU.cpp
     Transform.cpp
@@ -25,7 +29,7 @@ if (BUILD_CUDA_MODULE)
     )
 endif()
 
-if (WITH_IPPICV)
+if (WITH_IPP)
     target_sources(tgeometry_kernel PRIVATE
         IPPImage.cpp
     )

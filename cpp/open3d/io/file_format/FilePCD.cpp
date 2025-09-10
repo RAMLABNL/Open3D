@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include <liblzf/lzf.h>
@@ -239,7 +220,8 @@ bool ReadPCDHeader(FILE *file, PCDHeader &header) {
 double UnpackBinaryPCDElement(const char *data_ptr,
                               const char type,
                               const int size) {
-    if (type == 'I') {
+    const char type_uppercase = std::toupper(type, std::locale());
+    if (type_uppercase == 'I') {
         if (size == 1) {
             std::int8_t data;
             memcpy(&data, data_ptr, sizeof(data));
@@ -255,7 +237,7 @@ double UnpackBinaryPCDElement(const char *data_ptr,
         } else {
             return 0.0;
         }
-    } else if (type == 'U') {
+    } else if (type_uppercase == 'U') {
         if (size == 1) {
             std::uint8_t data;
             memcpy(&data, data_ptr, sizeof(data));
@@ -271,7 +253,7 @@ double UnpackBinaryPCDElement(const char *data_ptr,
         } else {
             return 0.0;
         }
-    } else if (type == 'F') {
+    } else if (type_uppercase == 'F') {
         if (size == 4) {
             float data;
             memcpy(&data, data_ptr, sizeof(data));
@@ -300,11 +282,12 @@ double UnpackASCIIPCDElement(const char *data_ptr,
                              const char type,
                              const int size) {
     char *end;
-    if (type == 'I') {
+    const char type_uppercase = std::toupper(type, std::locale());
+    if (type_uppercase == 'I') {
         return (double)std::strtol(data_ptr, &end, 0);
-    } else if (type == 'U') {
+    } else if (type_uppercase == 'U') {
         return (double)std::strtoul(data_ptr, &end, 0);
-    } else if (type == 'F') {
+    } else if (type_uppercase == 'F') {
         return std::strtod(data_ptr, &end);
     }
     return 0.0;
@@ -316,13 +299,14 @@ Eigen::Vector3d UnpackASCIIPCDColor(const char *data_ptr,
     if (size == 4) {
         std::uint8_t data[4] = {0, 0, 0, 0};
         char *end;
-        if (type == 'I') {
+        const char type_uppercase = std::toupper(type, std::locale());
+        if (type_uppercase == 'I') {
             std::int32_t value = std::strtol(data_ptr, &end, 0);
             memcpy(data, &value, 4);
-        } else if (type == 'U') {
+        } else if (type_uppercase == 'U') {
             std::uint32_t value = std::strtoul(data_ptr, &end, 0);
             memcpy(data, &value, 4);
-        } else if (type == 'F') {
+        } else if (type_uppercase == 'F') {
             float value = std::strtof(data_ptr, &end);
             memcpy(data, &value, 4);
         }

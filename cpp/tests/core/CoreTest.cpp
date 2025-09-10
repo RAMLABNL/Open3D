@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "tests/core/CoreTest.h"
@@ -35,6 +16,13 @@
 #include "open3d/core/SizeVector.h"
 
 namespace open3d {
+namespace core {
+void PrintTo(const Device &device, std::ostream *os) {
+    *os << device.ToString();
+}
+void PrintTo(const Dtype &dtype, std::ostream *os) { *os << dtype.ToString(); }
+}  // namespace core
+
 namespace tests {
 
 std::vector<core::Dtype> PermuteDtypesWithBool::TestCases() {
@@ -55,10 +43,15 @@ std::vector<core::Device> PermuteDevices::TestCases() {
     if (!cpu_devices.empty()) {
         devices.push_back(cpu_devices[0]);
     }
-    if (!cuda_devices.empty()) {
-        devices.push_back(cuda_devices[0]);
-    }
 
+    // Test 0, 1, or 2 CUDA devices.
+    // Testing 2 CUDA devices is necessary for testing device switching.
+    if (cuda_devices.size() == 1) {
+        devices.push_back(cuda_devices[0]);
+    } else if (cuda_devices.size() == 2) {
+        devices.push_back(cuda_devices[0]);
+        devices.push_back(cuda_devices[1]);
+    }
     return devices;
 }
 
@@ -66,8 +59,12 @@ std::vector<core::Device> PermuteDevicesWithSYCL::TestCases() {
     std::vector<core::Device> devices = PermuteDevices::TestCases();
     std::vector<core::Device> sycl_devices =
             core::Device::GetAvailableSYCLDevices();
-    if (!sycl_devices.empty()) {
+    // Skip the last SYCL device - this is the CPU fallback and support is
+    // untested.
+    if (sycl_devices.size() > 1) {
         devices.push_back(sycl_devices[0]);
+        // devices.insert(devices.end(), sycl_devices.begin(),
+        // sycl_devices.end());
     }
     return devices;
 }
@@ -98,7 +95,6 @@ PermuteDevicePairs::TestCases() {
             }
         }
     }
-
     return device_pairs;
 }
 
@@ -118,7 +114,11 @@ PermuteDevicePairsWithSYCL::TestCases() {
     std::vector<core::Device> devices;
     devices.insert(devices.end(), cpu_devices.begin(), cpu_devices.end());
     devices.insert(devices.end(), cuda_devices.begin(), cuda_devices.end());
-    devices.insert(devices.end(), sycl_devices.begin(), sycl_devices.end());
+    // Skip the last SYCL device - this is the CPU fallback
+    if (sycl_devices.size() > 1) {
+        devices.insert(devices.end(), sycl_devices.begin(),
+                       sycl_devices.end() - 1);
+    }
 
     // Self-pairs and cross pairs (bidirectional).
     std::vector<std::pair<core::Device, core::Device>> device_pairs;
@@ -132,7 +132,6 @@ PermuteDevicePairsWithSYCL::TestCases() {
             }
         }
     }
-
     return device_pairs;
 }
 

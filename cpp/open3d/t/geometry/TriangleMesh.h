@@ -1,32 +1,15 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
 
 #include <list>
+#include <type_traits>
+#include <unordered_map>
 
 #include "open3d/core/Tensor.h"
 #include "open3d/core/TensorCheck.h"
@@ -35,12 +18,14 @@
 #include "open3d/t/geometry/DrawableGeometry.h"
 #include "open3d/t/geometry/Geometry.h"
 #include "open3d/t/geometry/TensorMap.h"
+#include "open3d/visualization/rendering/Model.h"
 
 namespace open3d {
 namespace t {
 namespace geometry {
 
 class LineSet;
+class PointCloud;
 
 /// \class TriangleMesh
 /// \brief A triangle mesh contains vertices and triangles.
@@ -110,7 +95,7 @@ class LineSet;
 /// default and common attributes.
 class TriangleMesh : public Geometry, public DrawableGeometry {
 public:
-    /// Construct an empty pointcloud on the provided device.
+    /// Construct an empty trianglemesh on the provided device.
     /// \param device The device on which to initialize the trianglemesh
     /// (default: 'CPU:0').
     TriangleMesh(const core::Device &device = core::Device("CPU:0"));
@@ -613,6 +598,20 @@ public:
             core::Dtype int_dtype = core::Int64,
             const core::Device &device = core::Device("CPU:0"));
 
+    /// Create a mesh from a 3D scalar field (volume) by computing the
+    /// isosurface. This method uses the Flying Edges dual contouring method
+    /// that computes the isosurface similar to Marching Cubes.  The center of
+    /// the first voxel of the volume is at the origin (0,0,0).  The center of
+    /// the voxel at index [z,y,x] will be at (x,y,z).
+    /// \param volume 3D tensor with the volume.
+    /// \param contour_values A list of contour values at which isosurfaces will
+    /// be generated. The default value is 0.
+    /// \param device The device for the returned mesh.
+    static TriangleMesh CreateIsosurfaces(
+            const core::Tensor &volume,
+            const std::vector<double> contour_values = {0.0},
+            const core::Device &device = core::Device("CPU:0"));
+
 public:
     /// Clear all data in the trianglemesh.
     TriangleMesh &Clear() override {
@@ -684,6 +683,15 @@ public:
     /// rendering.
     TriangleMesh &ComputeVertexNormals(bool normalized = true);
 
+    /// \brief Function that computes the surface area of the mesh, i.e. the sum
+    /// of the individual triangle surfaces.
+    double GetSurfaceArea() const;
+
+    /// \brief Function to compute triangle areas and save it as a triangle
+    /// attribute "areas". Prints a warning, if mesh is empty or has no
+    /// triangles.
+    TriangleMesh &ComputeTriangleAreas();
+
     /// \brief Clip mesh with a plane.
     /// This method clips the triangle mesh with the specified plane.
     /// Parts of the mesh on the positive side of the plane will be kept and
@@ -716,7 +724,8 @@ public:
     /// values, e.g. vertices, normals, colors.
     /// \param int_dtype Int32 or Int64, used to store index values, e.g.
     /// triangles.
-    /// \param device The device where the resulting TriangleMesh resides in.
+    /// \param device The device where the resulting TriangleMesh resides in
+    /// (default CPU:0).
     static geometry::TriangleMesh FromLegacy(
             const open3d::geometry::TriangleMesh &mesh_legacy,
             core::Dtype float_dtype = core::Float32,
@@ -725,6 +734,28 @@ public:
 
     /// Convert to a legacy Open3D TriangleMesh.
     open3d::geometry::TriangleMesh ToLegacy() const;
+
+    /// Convert a TriangleMeshModel (e.g. as read from a file with
+    /// open3d::io::ReadTriangleMeshModel) to an unordered map of mesh names to
+    /// TriangleMeshes. Only one material is supported per mesh. Materials
+    /// common to multiple meshes will be dupicated. Textures (as
+    /// t::geometry::Image) will use shared storage.
+    /// \param model TriangleMeshModel to convert.
+    /// \param float_dtype Float32 or Float64, used to store floating point
+    /// values, e.g. vertices, normals, colors.
+    /// \param int_dtype Int32 or Int64, used to store index values, e.g.
+    /// triangles.
+    /// \param device The device where the resulting TriangleMesh resides in
+    /// (default CPU:0). Material textures use CPU storage - GPU resident
+    /// texture images are not yet supported.
+    /// \return unordered map of constituent mesh names to TriangleMeshes, with
+    /// materials.
+    static std::unordered_map<std::string, geometry::TriangleMesh>
+    FromTriangleMeshModel(
+            const open3d::visualization::rendering::TriangleMeshModel &model,
+            core::Dtype float_dtype = core::Float32,
+            core::Dtype int_dtype = core::Int64,
+            const core::Device &device = core::Device("CPU:0"));
 
     /// Compute the convex hull of the triangle mesh using qhull.
     ///
@@ -801,6 +832,9 @@ public:
     /// Create an axis-aligned bounding box from vertex attribute "positions".
     AxisAlignedBoundingBox GetAxisAlignedBoundingBox() const;
 
+    /// Create an oriented bounding box from vertex attribute "positions".
+    OrientedBoundingBox GetOrientedBoundingBox() const;
+
     /// Fill holes by triangulating boundary edges.
     ///
     /// This function always uses the CPU device.
@@ -829,9 +863,23 @@ public:
     /// \param gutter This is the space around the uv islands in pixels.
     /// \param max_stretch The maximum amount of stretching allowed. The
     /// parameter range is [0..1] with 0 meaning no stretch allowed.
-    void ComputeUVAtlas(size_t size = 512,
-                        float gutter = 1.0f,
-                        float max_stretch = 1.f / 6);
+    /// \param parallel_partitions The approximate number of partitions created
+    /// before computing the UV atlas for parallelizing the computation.
+    /// Parallelization can be enabled with values > 1. Note that
+    /// parallelization increases the number of UV islands and can lead to
+    /// results with lower quality.
+    /// \param nthreads The number of threads used
+    /// when parallel_partitions is > 1. Set to 0 for automatic number of thread
+    /// detection.
+    ///
+    /// \return Tuple with (max stretch, num_charts, num_partitions) storing the
+    /// actual amount of stretch, the number of created charts, and the number
+    /// of parallel partitions created.
+    std::tuple<float, int, int> ComputeUVAtlas(size_t size = 512,
+                                               float gutter = 1.0f,
+                                               float max_stretch = 1.f / 6,
+                                               int parallel_partitions = 1,
+                                               int nthreads = 0);
 
     /// Bake vertex attributes into textures.
     ///
@@ -918,6 +966,131 @@ public:
     TriangleMesh ExtrudeLinear(const core::Tensor &vector,
                                double scale = 1.0,
                                bool capping = true) const;
+
+    /// Partition the mesh by recursively doing PCA.
+    /// This function creates a new triangle attribute with the name
+    /// "partition_ids".
+    /// \param max_faces The maximum allowed number of faces in a partition.
+    /// \return The number of partitions.
+    int PCAPartition(int max_faces);
+
+    /// Returns a new mesh with the faces selected by a boolean mask.
+    /// \param mask A boolean mask with the shape (N) with N as the number of
+    /// faces in the mesh.
+    /// \return A new mesh with the selected faces. If the original mesh is
+    /// empty, return an empty mesh.
+    TriangleMesh SelectFacesByMask(const core::Tensor &mask) const;
+
+    /// Returns a new mesh with the vertices selected by a vector of indices.
+    /// If an item from the indices list exceeds the max vertex number of
+    /// the mesh or has a negative value, it is ignored.
+    /// \param indices An integer list of indices. Duplicates are
+    /// allowed, but ignored. Signed and unsigned integral types are allowed.
+    /// \param copy_attributes Indicates if vertex attributes (other than
+    /// positions) and triangle attributes (other than indices) should be copied
+    /// to the returned mesh.
+    /// \return A new mesh with the selected vertices and faces built
+    /// from the selected vertices. If the original mesh is empty, return
+    /// an empty mesh.
+    TriangleMesh SelectByIndex(const core::Tensor &indices,
+                               bool copy_attributes = true) const;
+
+    /// Removes unreferenced vertices from the mesh.
+    /// \return The reference to itself.
+    TriangleMesh RemoveUnreferencedVertices();
+
+    /// Create an albedo for the triangle mesh using calibrated images. The
+    /// triangle mesh must have texture coordinates ("texture_uvs" triangle
+    /// attribute). This works by back projecting the images onto the texture
+    /// surface. Overlapping images are blended together in the resulting
+    /// albedo. For best results, use images captured with exposure and white
+    /// balance lock to reduce the chance of seams in the output texture.
+    ///
+    /// This function is only supported on the CPU device.
+    ///
+    /// \param images vector of images.
+    /// \param intrinsic_matrices vector of {3,3} intrinsic matrices describing
+    /// the pinhole camera.
+    /// \param extrinsic_matrices vector of {4,4} extrinsic matrices describing
+    /// the position and orientation of the camera.
+    /// \param tex_size Output albedo texture size. This is a square image, so
+    /// only one side is needed.
+    /// \param update_material Whether to update the material of the triangle
+    /// mesh, possibly overwriting an existing albedo texture.
+    /// \return Image with albedo texture
+    Image ProjectImagesToAlbedo(
+            const std::vector<Image> &images,
+            const std::vector<core::Tensor> &intrinsic_matrices,
+            const std::vector<core::Tensor> &extrinsic_matrices,
+            int tex_size = 1024,
+            bool update_material = true);
+
+    /// Removes all non-manifold edges, by successively deleting triangles
+    /// with the smallest surface area adjacent to the
+    /// non-manifold edge until the number of adjacent triangles to the edge is
+    /// `<= 2`. If mesh is empty or has no triangles, prints a warning and
+    /// returns immediately. \return The reference to itself.
+    TriangleMesh RemoveNonManifoldEdges();
+
+    /// Returns the non-manifold edges of the triangle mesh.
+    /// If \param allow_boundary_edges is set to false, then also boundary
+    /// edges are returned.
+    /// \return 2d integer tensor with shape {n,2} encoding ordered edges.
+    /// If mesh is empty or has no triangles, returns an empty tensor.
+    core::Tensor GetNonManifoldEdges(bool allow_boundary_edges = true) const;
+
+    /// Sample points uniformly from the triangle mesh surface and return as a
+    /// PointCloud. Normals and colors are interpolated from the triangle mesh.
+    /// If texture_uvs and albedo are present, these are used to estimate the
+    /// sampled point color, otherwise vertex colors are used, if present.
+    /// During sampling, triangle areas are computed and saved in the "areas"
+    /// attribute.
+    /// \param number_of_points The number of points to sample.
+    /// \param use_triangle_normal If true, use the triangle normal as the
+    /// normal of the sampled point. Otherwise, interpolate the vertex normals.
+    PointCloud SamplePointsUniformly(size_t number_of_points,
+                                     bool use_triangle_normal = false);
+
+    /// Compute various metrics between two triangle meshes. This uses ray
+    /// casting for distance computations between a sampled point cloud and a
+    /// triangle mesh. Currently, Chamfer distance, Hausdorff distance  and
+    /// F-Score <a
+    /// href="../tutorial/reference.html#Knapitsch2017">[[Knapitsch2017]]</a>
+    /// are supported. The Chamfer distance is the sum of the mean distance to
+    /// the nearest neighbor from the sampled surface points of the first mesh
+    /// to the second mesh and vice versa. The F-Score at a fixed threshold
+    /// radius is the harmonic mean of the Precision and Recall. Recall is the
+    /// percentage of surface points from the first mesh that have the second
+    /// mesh within the threshold radius, while Precision is the percentage of
+    /// sampled points from the second mesh that have the first mesh surface
+    /// within the threhold radius.
+
+    /// \f{eqnarray*}{
+    ///   \text{Chamfer Distance: } d_{CD}(X,Y) &=& \frac{1}{|X|}\sum_{i \in X}
+    ///   || x_i - n(x_i, Y) || + \frac{1}{|Y|}\sum_{i \in Y} || y_i - n(y_i, X)
+    ///   || \\{}
+    ///   \text{Hausdorff distance: } d_H(X,Y) &=& \max \left\{ \max_{i \in X}
+    ///   || x_i - n(x_i, Y) ||, \max_{i \in Y} || y_i - n(y_i, X) || \right\}
+    ///   \\{}
+    ///   \text{Precision: } P(X,Y|d) &=& \frac{100}{|X|} \sum_{i \in X} || x_i
+    ///   - n(x_i, Y) || < d \\{}
+    ///   \text{Recall: } R(X,Y|d) &=& \frac{100}{|Y|} \sum_{i \in Y} || y_i -
+    ///  n(y_i, X) || < d \\{}
+    ///   \text{F-Score: } F(X,Y|d) &=& \frac{2 P(X,Y|d) R(X,Y|d)}{P(X,Y|d) +
+    ///  R(X,Y|d)}
+    /// \f}
+
+    /// As a side effect, the triangle areas are saved in the "areas" attribute.
+    /// \param mesh2 Other point cloud to compare with.
+    /// \param metrics List of Metric s to compute. Multiple metrics can be
+    /// computed at once for efficiency.
+    /// \param params MetricParameters struct holds parameters required by
+    /// different metrics.
+    /// \returns Tensor containing the requested metrics.
+    core::Tensor ComputeMetrics(
+            const TriangleMesh &mesh2,
+            std::vector<Metric> metrics = {Metric::ChamferDistance},
+            MetricParameters params = MetricParameters()) const;
 
 protected:
     core::Device device_ = core::Device("CPU:0");

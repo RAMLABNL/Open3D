@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include <Eigen/Dense>
@@ -58,7 +39,7 @@
 
 namespace open3d {
 namespace geometry {
-namespace poisson {
+namespace {
 
 // The order of the B-Spline used to splat in data for color interpolation
 static const int DATA_DEGREE = 0;
@@ -736,7 +717,7 @@ void Execute(const open3d::geometry::PointCloud& pcd,
                       Time() - startTime, FEMTree<Dim, Real>::MaxMemoryUsage());
 }
 
-}  // namespace poisson
+}  // namespace
 
 std::tuple<std::shared_ptr<TriangleMesh>, std::vector<double>>
 TriangleMesh::CreateFromPointCloudPoisson(const PointCloud& pcd,
@@ -746,10 +727,9 @@ TriangleMesh::CreateFromPointCloudPoisson(const PointCloud& pcd,
                                           bool linear_fit,
                                           bool use_normal_length_as_confidence,
                                           int n_threads) {
-    static const BoundaryType BType = poisson::DEFAULT_FEM_BOUNDARY;
+    static const BoundaryType BType = DEFAULT_FEM_BOUNDARY;
     typedef IsotropicUIntPack<
-            poisson::DIMENSION,
-            FEMDegreeAndBType</* Degree */ 1, BType>::Signature>
+            DIMENSION, FEMDegreeAndBType</* Degree */ 1, BType>::Signature>
             FEMSigs;
 
     if (!pcd.HasNormals()) {
@@ -770,8 +750,8 @@ TriangleMesh::CreateFromPointCloudPoisson(const PointCloud& pcd,
 
     auto mesh = std::make_shared<TriangleMesh>();
     std::vector<double> densities;
-    poisson::Execute<float>(pcd, mesh, densities, static_cast<int>(depth),
-                            width, scale, linear_fit, use_normal_length_as_confidence, FEMSigs());
+    Execute<float>(pcd, mesh, densities, static_cast<int>(depth), width, scale,
+                   linear_fit, use_normal_length_as_confidence, FEMSigs());
 
     ThreadPool::Terminate();
 

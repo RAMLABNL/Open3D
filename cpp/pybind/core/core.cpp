@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "pybind/core/core.h"
@@ -35,27 +16,42 @@
 namespace open3d {
 namespace core {
 
-void pybind_core(py::module& m) {
+void pybind_core_declarations(py::module& m) {
     py::module m_core = m.def_submodule("core");
 
     // opn3d::core namespace.
-    pybind_cuda_utils(m_core);
-    pybind_sycl_utils(m_core);
-    pybind_core_blob(m_core);
-    pybind_core_dtype(m_core);
-    pybind_core_device(m_core);
-    pybind_core_size_vector(m_core);
-    pybind_core_tensor(m_core);
-    pybind_core_tensor_function(m_core);
-    pybind_core_linalg(m_core);
-    pybind_core_kernel(m_core);
-    pybind_core_hashmap(m_core);
-    pybind_core_hashset(m_core);
-    pybind_core_scalar(m_core);
+    pybind_cuda_utils_declarations(m_core);
+    pybind_core_blob_declarations(m_core);
+    pybind_core_dtype_declarations(m_core);
+    pybind_core_device_declarations(m_core);
+    pybind_core_size_vector_declarations(m_core);
+    pybind_core_tensor_declarations(m_core);
+    pybind_core_kernel_declarations(m_core);
+    pybind_core_hashmap_declarations(m_core);
+    pybind_core_hashset_declarations(m_core);
+    pybind_core_scalar_declarations(m_core);
 
     // opn3d::core::nns namespace.
     py::module m_nns = m_core.def_submodule("nns");
-    nns::pybind_core_nns(m_nns);
+    nns::pybind_core_nns_declarations(m_nns);
+}
+
+void pybind_core_definitions(py::module& m) {
+    auto m_core = static_cast<py::module>(m.attr("core"));
+    pybind_cuda_utils_definitions(m_core);
+    pybind_sycl_utils_definitions(m_core);
+    pybind_core_dtype_definitions(m_core);
+    pybind_core_device_definitions(m_core);
+    pybind_core_size_vector_definitions(m_core);
+    pybind_core_tensor_definitions(m_core);
+    pybind_core_tensor_function_definitions(m_core);
+    pybind_core_linalg_definitions(m_core);
+    pybind_core_kernel_definitions(m_core);
+    pybind_core_hashmap_definitions(m_core);
+    pybind_core_hashset_definitions(m_core);
+    pybind_core_scalar_definitions(m_core);
+    auto m_nns = static_cast<py::module>(m_core.attr("nns"));
+    nns::pybind_core_nns_definitions(m_nns);
 }
 
 }  // namespace core

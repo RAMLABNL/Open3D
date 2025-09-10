@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/geometry/Image.h"
@@ -56,7 +37,7 @@ static const std::unordered_map<std::string, std::string>
                  "When ``True``, image in the pyramid will first be filtered "
                  "by a 3x3 Gaussian kernel before downsampling."}};
 
-void pybind_image(py::module &m) {
+void pybind_image_declarations(py::module &m) {
     py::enum_<Image::FilterType> image_filter_type(m, "ImageFilterType");
     image_filter_type.value("Gaussian3", Image::FilterType::Gaussian3)
             .value("Gaussian5", Image::FilterType::Gaussian5)
@@ -69,11 +50,22 @@ void pybind_image(py::module &m) {
                 return "Enum class for Image filter types.";
             }),
             py::none(), py::none(), "");
-
     py::class_<Image, PyGeometry2D<Image>, std::shared_ptr<Image>, Geometry2D>
             image(m, "Image", py::buffer_protocol(),
                   "The image class stores image with customizable width, "
                   "height, num of channels and bytes per channel.");
+    py::class_<RGBDImage, PyGeometry2D<RGBDImage>, std::shared_ptr<RGBDImage>,
+               Geometry2D>
+            rgbd_image(m, "RGBDImage",
+                       "RGBDImage is for a pair of registered color and depth "
+                       "images, viewed from the same view, of the same "
+                       "resolution. If you have other format, convert it "
+                       "first.");
+}
+void pybind_image_definitions(py::module &m) {
+    auto image = static_cast<py::class_<Image, PyGeometry2D<Image>,
+                                        std::shared_ptr<Image>, Geometry2D>>(
+            m.attr("Image"));
     py::detail::bind_default_constructor<Image>(image);
     py::detail::bind_copy_functions<Image>(image);
     image.def(py::init([](py::buffer b) {
@@ -105,6 +97,13 @@ void pybind_image(py::module &m) {
              }
              height = (int)info.shape[0];
              width = (int)info.shape[1];
+             if (info.strides[1] != num_of_channels * bytes_per_channel ||
+                 info.strides[0] !=
+                         width * num_of_channels * bytes_per_channel) {
+                 throw std::runtime_error(
+                         "Image can only be initialized from a contiguous "
+                         "buffer.");
+             }
              auto img = new Image();
              img->Prepare(width, height, num_of_channels, bytes_per_channel);
              memcpy(img->data_.data(), info.ptr, img->data_.size());
@@ -216,13 +215,10 @@ void pybind_image(py::module &m) {
     docstring::ClassMethodDocInject(m, "Image", "filter_pyramid",
                                     map_shared_argument_docstrings);
 
-    py::class_<RGBDImage, PyGeometry2D<RGBDImage>, std::shared_ptr<RGBDImage>,
-               Geometry2D>
-            rgbd_image(m, "RGBDImage",
-                       "RGBDImage is for a pair of registered color and depth "
-                       "images, viewed from the same view, of the same "
-                       "resolution. If you have other format, convert it "
-                       "first.");
+    auto rgbd_image =
+            static_cast<py::class_<RGBDImage, PyGeometry2D<RGBDImage>,
+                                   std::shared_ptr<RGBDImage>, Geometry2D>>(
+                    m.attr("RGBDImage"));
     py::detail::bind_default_constructor<RGBDImage>(rgbd_image);
     rgbd_image
             .def_readwrite("color", &RGBDImage::color_,
@@ -286,8 +282,6 @@ void pybind_image(py::module &m) {
     docstring::ClassMethodDocInject(m, "RGBDImage", "create_from_nyu_format",
                                     map_shared_argument_docstrings);
 }
-
-void pybind_image_methods(py::module &m) {}
 
 }  // namespace geometry
 }  // namespace open3d

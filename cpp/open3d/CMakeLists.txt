@@ -5,6 +5,10 @@
 # lib, and targets that links to the Open3D lib, e.g pybind, unit tests, etc.
 function(open3d_set_open3d_lib_properties target)
     cmake_parse_arguments(arg "HIDDEN" "" "" ${ARGN})
+    set_target_properties(${target} PROPERTIES
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${OPEN3D_ABI_VERSION}
+    )
     if(NOT BUILD_SHARED_LIBS)
         target_compile_definitions(${target} PUBLIC OPEN3D_STATIC)
     endif()
@@ -17,6 +21,33 @@ function(open3d_set_open3d_lib_properties target)
         target_compile_definitions(${target} PRIVATE OPEN3D_ENABLE_DLL_EXPORTS)
     endif()
 
+# Hide all 3rd party symbols, e.g. from header libraries.
+get_target_property(TARGET_TYPE ${target} TYPE)
+if (TARGET_TYPE STREQUAL SHARED_LIBRARY)
+        if (APPLE)
+            file(GENERATE OUTPUT libOpen3D.map CONTENT
+                [=[*open3d*
+                   *Open3D*
+                ]=])
+            target_link_options(${target} PRIVATE $<$<CONFIG:Release>:
+                -Wl,-exported_symbols_list
+                "${CMAKE_CURRENT_BINARY_DIR}/libOpen3D.map" >)
+        elseif (UNIX)   # Linux
+            file(GENERATE OUTPUT libOpen3D.map CONTENT
+                [=[{
+    global:
+        *open3d*;
+        extern "C++" {
+             open3d::*;
+        };
+    local: *;
+};]=])
+            target_link_options(${target} PRIVATE $<$<CONFIG:Release>:
+                "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/libOpen3D.map" >)
+        elseif (WIN32)
+            # TODO(Sameer): Only export open3d symbols
+        endif()
+    endif()
 endfunction()
 
 # Configure a header file to pass the version settings to the source code
@@ -58,6 +89,7 @@ target_sources(Open3D PRIVATE
 open3d_ispc_target_sources_TARGET_OBJECTS(Open3D PRIVATE
     camera
     core
+    core_impl
     data
     geometry
     tgeometry
@@ -70,6 +102,7 @@ open3d_ispc_target_sources_TARGET_OBJECTS(Open3D PRIVATE
     tpipelines_kernel
     utility
     visualization
+    visualization_impl
 )
 
 if (BUILD_GUI)
@@ -146,6 +179,12 @@ install(FILES
         "${PROJECT_BINARY_DIR}/Open3DConfigVersion.cmake"
         DESTINATION "${Open3D_INSTALL_CMAKE_DIR}" COMPONENT dev)
 
+# Install GUI resources
+if (BUILD_GUI)
+    install(DIRECTORY ${GUI_RESOURCE_DIR}
+         DESTINATION "${Open3D_INSTALL_RESOURCE_DIR}")
+endif()
+
 if (BUILD_SHARED_LIBS AND UNIX)
     file(CONFIGURE OUTPUT Open3D.pc.in
          CONTENT [=[
@@ -157,8 +196,8 @@ Name: Open3D
 Description: @PROJECT_DESCRIPTION@
 URL: @PROJECT_HOMEPAGE_URL@
 Version: @PROJECT_VERSION@
-Cflags: -std=c++@CMAKE_CXX_STANDARD@ -isystem ${includedir} -isystem ${includedir}/open3d/3rdparty -D$<JOIN:$<TARGET_PROPERTY:INTERFACE_COMPILE_DEFINITIONS>, -D>
-Libs: -L${libdir} -Wl,-rpath,${libdir} -lOpen3D]=]  @ONLY NEWLINE_STYLE LF)
+Cflags: -std=c++@CMAKE_CXX_STANDARD@ -isystem${includedir} -isystem${includedir}/open3d/3rdparty -D$<JOIN:$<TARGET_PROPERTY:INTERFACE_COMPILE_DEFINITIONS>, -D>
+Libs: -L${libdir} -Wl,-rpath,${libdir} -lOpen3D -ltbb]=]  @ONLY NEWLINE_STYLE LF)
     file(GENERATE OUTPUT Open3D.pc INPUT "${CMAKE_CURRENT_BINARY_DIR}/Open3D.pc.in"
         TARGET "Open3D::Open3D")
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/Open3D.pc"

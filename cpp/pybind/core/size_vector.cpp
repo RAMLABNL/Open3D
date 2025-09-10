@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/core/SizeVector.h"
@@ -32,12 +13,17 @@
 namespace open3d {
 namespace core {
 
-void pybind_core_size_vector(py::module& m) {
+void pybind_core_size_vector_declarations(py::module& m) {
     // bind_vector takes care of most common methods for Python list.
     auto sv = py::bind_vector<SizeVector>(
             m, "SizeVector",
             "A vector of integers for specifying shape, strides, etc.");
-
+    auto dsv = py::bind_vector<DynamicSizeVector>(
+            m, "DynamicSizeVector",
+            "A vector of integers for specifying shape, strides, etc. Some "
+            "elements can be None.");
+}
+void pybind_core_size_vector_definitions(py::module& m) {
     // In Python, We want (3), (3,), [3] and [3,] to represent the same thing.
     // The following are all equivalent to core::SizeVector({3}):
     // - o3d.core.SizeVector(3)     # int
@@ -52,17 +38,15 @@ void pybind_core_size_vector(py::module& m) {
     //
     // The API difference is due to the NumPy convention which allows integer to
     // represent a 1-element tuple, and the C++ constructor for vectors.
+    auto sv = static_cast<py::class_<SizeVector>>(m.attr("SizeVector"));
     sv.def(py::init([](int64_t i) { return SizeVector({i}); }));
     py::implicitly_convertible<py::int_, SizeVector>();
 
     // Allows tuple and list implicit conversions to SizeVector.
     py::implicitly_convertible<py::tuple, SizeVector>();
     py::implicitly_convertible<py::list, SizeVector>();
-
-    auto dsv = py::bind_vector<DynamicSizeVector>(
-            m, "DynamicSizeVector",
-            "A vector of integers for specifying shape, strides, etc. Some "
-            "elements can be None.");
+    auto dsv = static_cast<py::class_<DynamicSizeVector>>(
+            m.attr("DynamicSizeVector"));
     dsv.def("__repr__",
             [](const DynamicSizeVector& dsv) { return dsv.ToString(); });
 }

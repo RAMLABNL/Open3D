@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/visualization/visualizer/O3DVisualizer.h"
@@ -403,7 +384,9 @@ struct O3DVisualizer::Impl {
                                std::vector<std::pair<size_t, Eigen::Vector3d>>>
                                &indices,
                        int keymods) {
-                    if ((keymods & int(KeyModifier::SHIFT)) ||
+                    bool unselect_mode_requested =
+                            keymods & int(KeyModifier::SHIFT);
+                    if (unselect_mode_requested ||
                         polygon_selection_unselects_) {
                         selections_->UnselectIndices(indices);
                     } else {
@@ -507,11 +490,13 @@ struct O3DVisualizer::Impl {
         });
 
 #if __APPLE__
-        const char *selection_help =
-                "Cmd-click to select a point\nCmd-ctrl-click to polygon select";
+        const char *selection_help = R"(Cmd-click to select a point
+Cmd-shift-click to deselect a point
+Cmd-alt-click to polygon select)";
 #else
-        const char *selection_help =
-                "Ctrl-click to select a point\nCmd-alt-click to polygon select";
+        const char *selection_help = R"(Ctrl-click to select a point
+Ctrl-shift-click to deselect a point
+Ctrl-alt-click to polygon select)";
 #endif  // __APPLE__
         h = new Horiz();
         h->AddStretch();
@@ -960,11 +945,24 @@ struct O3DVisualizer::Impl {
 
             // Finally assign material properties if geometry is a triangle mesh
             if (tmesh && tmesh->materials_.size() > 0) {
-                // Only a single material is supported for TriangleMesh so we
-                // just grab the first one we find. Users should be using
-                // TriangleMeshModel if they have a model with multiple
-                // materials.
-                auto &mesh_material = tmesh->materials_.begin()->second;
+                std::size_t material_index;
+                if (tmesh->HasTriangleMaterialIds()) {
+                    auto minmax_it = std::minmax_element(
+                            tmesh->triangle_material_ids_.begin(),
+                            tmesh->triangle_material_ids_.end());
+                    if (*minmax_it.first != *minmax_it.second) {
+                        utility::LogWarning(
+                                "Only a single material is "
+                                "supported for TriangleMesh visualization, "
+                                "only the first referenced material will be "
+                                "used. Use TriangleMeshModel if more than one "
+                                "material is required.");
+                    }
+                    material_index = *minmax_it.first;
+                } else {
+                    material_index = 0;
+                }
+                auto &mesh_material = tmesh->materials_[material_index].second;
                 mat.base_color = {mesh_material.baseColor.r(),
                                   mesh_material.baseColor.g(),
                                   mesh_material.baseColor.b(),
@@ -1065,8 +1063,8 @@ struct O3DVisualizer::Impl {
         for (size_t i = 0; i < objects_.size(); ++i) {
             if (objects_[i].name == name) {
                 group = objects_[i].group;
-                objects_.erase(objects_.begin() + i);
                 settings.object2itemid.erase(objects_[i].name);
+                objects_.erase(objects_.begin() + i);
                 break;
             }
         }
@@ -1540,6 +1538,9 @@ struct O3DVisualizer::Impl {
 
         px = int(ConvertToScaledPixels(px));
         for (auto &o : objects_) {
+            // Ignore Models since they can never be point clouds
+            if (o.model) continue;
+
             o.material.point_size = float(px);
             OverrideMaterial(o.name, o.material, ui_state_.scene_shader);
         }
@@ -1548,12 +1549,10 @@ struct O3DVisualizer::Impl {
             OverrideMaterial(o.name, o.material, ui_state_.scene_shader);
         }
 
-        auto bbox = scene_->GetScene()->GetBoundingBox();
-        auto xdim = bbox.max_bound_.x() - bbox.min_bound_.x();
-        auto ydim = bbox.max_bound_.y() - bbox.min_bound_.z();
-        auto zdim = bbox.max_bound_.z() - bbox.min_bound_.y();
+        auto bbox_extend = scene_->GetScene()->GetBoundingBox().GetExtent();
         auto psize = double(std::max(5, px)) * 0.000666 *
-                     std::max(xdim, std::max(ydim, zdim));
+                     std::max(bbox_extend.x(),
+                              std::max(bbox_extend.y(), bbox_extend.z()));
         selections_->SetPointSize(psize);
 
         scene_->SetPickablePointSize(px);
@@ -1565,6 +1564,9 @@ struct O3DVisualizer::Impl {
 
         px = int(ConvertToScaledPixels(px));
         for (auto &o : objects_) {
+            // Ignore Models since they can never be point clouds
+            if (o.model) continue;
+
             o.material.line_width = float(px);
             OverrideMaterial(o.name, o.material, ui_state_.scene_shader);
         }
@@ -1701,6 +1703,18 @@ struct O3DVisualizer::Impl {
         auto it = settings.mouse_buttons.find(mode);
         if (it != settings.mouse_buttons.end()) {
             it->second->SetOn(true);
+        }
+    }
+
+    void SetPanelOpen(const std::string &name, bool open) {
+        if (name == settings.mouse_panel->GetText()) {
+            settings.mouse_panel->SetIsOpen(open);
+        } else if (name == settings.scene_panel->GetText()) {
+            settings.scene_panel->SetIsOpen(open);
+        } else if (name == settings.light_panel->GetText()) {
+            settings.light_panel->SetIsOpen(open);
+        } else if (name == settings.geometries_panel->GetText()) {
+            settings.geometries_panel->SetIsOpen(open);
         }
     }
 
@@ -2045,12 +2059,32 @@ struct O3DVisualizer::Impl {
 
     void UpdateSelectableGeometry() {
         std::vector<SceneWidget::PickableGeometry> pickable;
-        pickable.reserve(objects_.size());
+        // Count number of meshes stored in TriangleMeshModels
+        size_t model_mesh_count = 0;
+        size_t model_count = 0;
         for (auto &o : objects_) {
             if (!IsGeometryVisible(o)) {
                 continue;
             }
-            pickable.emplace_back(o.name, o.geometry.get(), o.tgeometry.get());
+            if (o.model.get()) {
+                model_count++;
+                model_mesh_count += o.model.get()->meshes_.size();
+            }
+        }
+        pickable.reserve(objects_.size() + model_mesh_count - model_count);
+        for (auto &o : objects_) {
+            if (!IsGeometryVisible(o)) {
+                continue;
+            }
+            if (o.model.get()) {
+                for (auto &g : o.model->meshes_) {
+                    pickable.emplace_back(g.mesh_name, g.mesh.get(),
+                                          o.tgeometry.get());
+                }
+            } else {
+                pickable.emplace_back(o.name, o.geometry.get(),
+                                      o.tgeometry.get());
+            }
         }
         selections_->SetSelectableGeometry(pickable);
     }
@@ -2092,7 +2126,7 @@ struct O3DVisualizer::Impl {
                 (std::string("Open3D ") + OPEN3D_VERSION).c_str());
         auto text = std::make_shared<gui::Label>(
                 "The MIT License (MIT)\n"
-                "Copyright (c) 2018-2021 www.open3d.org\n\n"
+                "Copyright (c) 2018-2023 www.open3d.org\n\n"
 
                 "Permission is hereby granted, free of charge, to any person "
                 "obtaining a copy of this software and associated "
@@ -2422,6 +2456,10 @@ void O3DVisualizer::SetLineWidth(int line_width) {
 
 void O3DVisualizer::SetMouseMode(SceneWidget::Controls mode) {
     impl_->SetMouseMode(mode);
+}
+
+void O3DVisualizer::SetPanelOpen(const std::string &name, bool open) {
+    impl_->SetPanelOpen(name, open);
 }
 
 void O3DVisualizer::EnableGroup(const std::string &group, bool enable) {

@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -356,6 +337,12 @@ public:
     /// \return Rotated line set.
     LineSet &Rotate(const core::Tensor &R, const core::Tensor &center);
 
+    /// \brief Assigns uniform color to all lines of the LineSet.
+    ///
+    /// \param color RGB color for the LineSet. {3,} shaped Tensor.
+    /// Floating color values are clipped between 0.0 and 1.0.
+    LineSet &PaintUniformColor(const core::Tensor &color);
+
     /// \brief Returns the device attribute of this LineSet.
     core::Device GetDevice() const override { return device_; }
 
@@ -377,6 +364,9 @@ public:
 
     /// Create an axis-aligned bounding box from point attribute "positions".
     AxisAlignedBoundingBox GetAxisAlignedBoundingBox() const;
+
+    /// Create an oriented bounding box from point attribute "positions".
+    OrientedBoundingBox GetOrientedBoundingBox() const;
 
     /// Sweeps the line set rotationally about an axis.
     /// \param angle The rotation angle in degree.
@@ -400,6 +390,22 @@ public:
     TriangleMesh ExtrudeLinear(const core::Tensor &vector,
                                double scale = 1.0,
                                bool capping = true) const;
+
+    /// Factory function to create a LineSet from intrinsic and extrinsic
+    /// matrices.
+    ///
+    /// \param view_width_px The width of the view, in pixels.
+    /// \param view_height_px The height of the view, in pixels.
+    /// \param intrinsic The intrinsic matrix {3,3} shape.
+    /// \param extrinsic The extrinsic matrix {4,4} shape.
+    /// \param scale camera scale
+    /// \param color tensor with float32 dtype and shape {3}. Default is blue.
+    static LineSet CreateCameraVisualization(int view_width_px,
+                                             int view_height_px,
+                                             const core::Tensor &intrinsic,
+                                             const core::Tensor &extrinsic,
+                                             double scale,
+                                             const core::Tensor &color = {});
 
 protected:
     core::Device device_ = core::Device("CPU:0");

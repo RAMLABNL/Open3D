@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #if defined(_MSC_VER)
@@ -31,6 +12,7 @@
 
 #include "open3d/visualization/rendering/Material.h"
 
+#include "open3d/visualization/rendering/MaterialRecord.h"
 #include "pybind/open3d_pybind.h"
 
 PYBIND11_MAKE_OPAQUE(
@@ -45,21 +27,26 @@ namespace open3d {
 namespace visualization {
 namespace rendering {
 
-void pybind_material(py::module& m) {
+void pybind_material_declarations(py::module& m) {
     py::bind_map<std::unordered_map<std::string, t::geometry::Image>>(
             m, "TextureMaps");
     py::bind_map<std::unordered_map<std::string, float>>(m, "ScalarProperties");
     py::bind_map<Material::VectorPropertyMap>(m, "VectorProperties");
-
     py::class_<Material, std::shared_ptr<Material>> mat(
             m, "Material",
             "Properties (texture maps, scalar and vector) related to "
             "visualization. Materials are optionally set for 3D geometries "
             "such as TriangleMesh, LineSets, and PointClouds");
-
+}
+void pybind_material_definitions(py::module& m) {
+    auto mat = static_cast<py::class_<Material, std::shared_ptr<Material>>>(
+            m.attr("Material"));
     mat.def(py::init<>())
-            .def(py::init<Material>())
-            .def(py::init<const std::string&>())
+            .def(py::init<Material>(), "", "mat"_a)
+            .def(py::init<const std::string&>(), "", "material_name"_a)
+            .def(py::init(&Material::FromMaterialRecord), "material_record"_a,
+                 "Convert from MaterialRecord.")
+            .def("__repr__", &Material::ToString)
             .def("set_default_properties", &Material::SetDefaultProperties,
                  "Fills material with defaults for common PBR material "
                  "properties used by Open3D")

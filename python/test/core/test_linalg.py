@@ -1,27 +1,8 @@
 # ----------------------------------------------------------------------------
 # -                        Open3D: www.open3d.org                            -
 # ----------------------------------------------------------------------------
-# The MIT License (MIT)
-#
-# Copyright (c) 2018-2021 www.open3d.org
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
+# Copyright (c) 2018-2024 www.open3d.org
+# SPDX-License-Identifier: MIT
 # ----------------------------------------------------------------------------
 
 import os
@@ -36,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
 from open3d_test import list_devices
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_matmul(device, dtype):
@@ -90,7 +71,7 @@ def test_matmul(device, dtype):
             assert 'dimensions with zero' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype", [o3c.float32, o3c.float64])
 def test_addmm(device, dtype):
     # Shape takes tuple, list or o3c.SizeVector
@@ -160,7 +141,7 @@ def test_addmm(device, dtype):
             assert 'dimensions with zero' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_det(device, dtype):
@@ -191,7 +172,7 @@ def test_det(device, dtype):
         assert 'must be square' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_lu(device, dtype):
@@ -222,7 +203,7 @@ def test_lu(device, dtype):
             assert 'must be 2D' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_lu_ipiv(device, dtype):
@@ -256,7 +237,7 @@ def test_lu_ipiv(device, dtype):
             assert 'must be 2D' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_inverse(device, dtype):
@@ -308,7 +289,7 @@ def test_inverse(device, dtype):
             assert 'Singular matrix' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_svd(device, dtype):
@@ -370,7 +351,7 @@ def test_svd(device, dtype):
         assert 'must be 2D' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype", [o3c.float32, o3c.float64])
 def test_solve(device, dtype):
     # Test square
@@ -388,7 +369,7 @@ def test_solve(device, dtype):
         assert 'singular' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype", [o3c.float32, o3c.float64])
 def test_lstsq(device, dtype):
     # Test square
@@ -435,7 +416,7 @@ def test_lstsq(device, dtype):
                 a_shape[0], a_shape[1]) in str(excinfo.value)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_thiu(device, dtype):
@@ -459,7 +440,7 @@ def test_thiu(device, dtype):
                                atol=1e-5)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_thil(device, dtype):
@@ -483,7 +464,7 @@ def test_thil(device, dtype):
                                atol=1e-5)
 
 
-@pytest.mark.parametrize("device", list_devices())
+@pytest.mark.parametrize("device", list_devices(enable_sycl=True))
 @pytest.mark.parametrize("dtype",
                          [o3c.int32, o3c.int64, o3c.float32, o3c.float64])
 def test_thiul(device, dtype):

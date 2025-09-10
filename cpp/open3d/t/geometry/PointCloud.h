@@ -1,31 +1,13 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
 
+#include <initializer_list>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -348,9 +330,9 @@ public:
     /// \brief Downsamples a point cloud with a specified voxel size.
     ///
     /// \param voxel_size Voxel size. A positive number.
+    /// \param reduction Reduction type. Currently only support "mean".
     PointCloud VoxelDownSample(double voxel_size,
-                               const core::HashBackendType &backend =
-                                       core::HashBackendType::Default) const;
+                               const std::string &reduction = "mean") const;
 
     /// \brief Downsamples a point cloud by selecting every kth index point and
     /// its attributes.
@@ -370,10 +352,12 @@ public:
     /// points has farthest distance.
     ///
     /// The sampling is performed by selecting the farthest point from previous
-    /// selected points iteratively.
+    /// selected points iteratively, starting from `start_index`.
     ///
     /// \param num_samples Number of points to be sampled.
-    PointCloud FarthestPointDownSample(size_t num_samples) const;
+    /// \param start_index Index to start downsampling from.
+    PointCloud FarthestPointDownSample(const size_t num_samples,
+                                       const size_t start_index = 0) const;
 
     /// \brief Remove points that have less than \p nb_points neighbors in a
     /// sphere of a given radius.
@@ -536,10 +520,18 @@ public:
     /// \brief Function to consistently orient estimated normals based on
     /// consistent tangent planes as described in Hoppe et al., "Surface
     /// Reconstruction from Unorganized Points", 1992.
+    /// Further details on parameters are described in
+    /// Piazza, Valentini, Varetti, "Mesh Reconstruction from Point Cloud",
+    /// 2023.
     ///
     /// \param k k nearest neighbour for graph reconstruction for normal
     /// propagation.
-    void OrientNormalsConsistentTangentPlane(size_t k);
+    /// \param lambda penalty constant on the distance of a point from the
+    /// tangent plane \param cos_alpha_tol treshold that defines the amplitude
+    /// of the cone spanned by the reference normal
+    void OrientNormalsConsistentTangentPlane(size_t k,
+                                             const double lambda = 0.0,
+                                             const double cos_alpha_tol = 1.0);
 
     /// \brief Function to compute point color gradients. If radius is provided,
     /// then HybridSearch is used, otherwise KNN-Search is used.
@@ -660,6 +652,9 @@ public:
     /// Create an axis-aligned bounding box from attribute "positions".
     AxisAlignedBoundingBox GetAxisAlignedBoundingBox() const;
 
+    /// Create an oriented bounding box from attribute "positions".
+    OrientedBoundingBox GetOrientedBoundingBox() const;
+
     /// \brief Function to crop pointcloud into output pointcloud.
     ///
     /// \param aabb AxisAlignedBoundingBox to crop points.
@@ -667,6 +662,13 @@ public:
     /// the bounding box.
     PointCloud Crop(const AxisAlignedBoundingBox &aabb,
                     bool invert = false) const;
+
+    /// \brief Function to crop pointcloud into output pointcloud.
+    ///
+    /// \param obb OrientedBoundingBox to crop points.
+    /// \param invert Crop the points outside of the bounding box or inside of
+    /// the bounding box.
+    PointCloud Crop(const OrientedBoundingBox &obb, bool invert = false) const;
 
     /// Sweeps the point cloud rotationally about an axis.
     /// \param angle The rotation angle in degree.
@@ -690,6 +692,51 @@ public:
     LineSet ExtrudeLinear(const core::Tensor &vector,
                           double scale = 1.0,
                           bool capping = true) const;
+
+    /// Partition the point cloud by recursively doing PCA.
+    /// This function creates a new point attribute with the name
+    /// "partition_ids".
+    /// \param max_points The maximum allowed number of points in a partition.
+    /// \return The number of partitions.
+    int PCAPartition(int max_points);
+
+    /// Compute various metrics between two point clouds. Currently, Chamfer
+    /// distance, Hausdorff distance and F-Score
+    /// <a href="../tutorial/reference.html#Knapitsch2017">[[Knapitsch2017]]</a>
+    /// are supported. The Chamfer distance is the sum of the mean distance to
+    /// the nearest neighbor from the points of the first point cloud to the
+    /// second point cloud. The F-Score at a fixed threshold radius is the
+    /// harmonic mean of the Precision and Recall. Recall is the percentage of
+    /// surface points from the first point cloud that have the second point
+    /// cloud points within the threshold radius, while Precision is the
+    /// percentage of points from the second point cloud that have the first
+    /// point cloud points within the threhold radius.
+
+    /// \f{eqnarray*}{
+    ///   \text{Chamfer Distance: } d_{CD}(X,Y) &=& \frac{1}{|X|}\sum_{i \in X}
+    ///   || x_i - n(x_i, Y) || + \frac{1}{|Y|}\sum_{i \in Y} || y_i - n(y_i, X)
+    ///   || \\{}
+    ///   \text{Hausdorff distance: } d_H(X,Y) &=& \max \left\{ \max_{i \in X}
+    ///   || x_i - n(x_i, Y) ||, \max_{i \in Y} || y_i - n(y_i, X) || \right\}
+    ///   \\{}
+    ///   \text{Precision: } P(X,Y|d) &=& \frac{100}{|X|} \sum_{i \in X} || x_i
+    ///   - n(x_i, Y) || < d \\{}
+    ///   \text{Recall: } R(X,Y|d) &=& \frac{100}{|Y|} \sum_{i \in Y} || y_i -
+    ///   n(y_i, X) || < d \\{}
+    ///   \text{F-Score: } F(X,Y|d) &=& \frac{2 P(X,Y|d) R(X,Y|d)}{P(X,Y|d) +
+    ///   R(X,Y|d)}
+    /// \f}
+
+    /// \param pcd2 Other point cloud to compare with.
+    /// \param metrics List of Metric s to compute.  Multiple metrics can be
+    /// computed at once for efficiency.
+    /// \param params MetricParameters struct holds parameters required by
+    /// different metrics.
+    /// \returns Tensor containing the requested metrics.
+    core::Tensor ComputeMetrics(
+            const PointCloud &pcd2,
+            std::vector<Metric> metrics = {Metric::ChamferDistance},
+            MetricParameters params = MetricParameters()) const;
 
 protected:
     core::Device device_ = core::Device("CPU:0");

@@ -1,5 +1,5 @@
 # FROM must be called before other ARGS except for ARG BASE_IMAGE
-ARG BASE_IMAGE=nvidia/cuda:11.6.2-cudnn8-devel-ubuntu18.04
+ARG BASE_IMAGE=nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
 FROM ${BASE_IMAGE}
 
 # Customizable build arguments from cuda.yml
@@ -8,14 +8,19 @@ ARG CCACHE_TAR_NAME
 ARG CMAKE_VERSION
 ARG CCACHE_VERSION
 ARG PYTHON_VERSION
+ARG BUILD_TENSORFLOW_OPS
+ARG BUILD_PYTORCH_OPS
+ARG CI
 
 # Forward all ARG to ENV
 # ci_utils.sh requires these environment variables
 ENV DEVELOPER_BUILD=${DEVELOPER_BUILD}
 ENV CCACHE_TAR_NAME=${CCACHE_TAR_NAME}
 ENV CMAKE_VERSION=${CMAKE_VERSION}
-ARG CCACHE_VERSION=${CCACHE_VERSION}
+ENV CCACHE_VERSION=${CCACHE_VERSION}
 ENV PYTHON_VERSION=${PYTHON_VERSION}
+ENV BUILD_PYTORCH_OPS=${BUILD_PYTORCH_OPS}
+ENV BUILD_TENSORFLOW_OPS=${BUILD_TENSORFLOW_OPS}
 
 # Prevent interactive inputs when installing packages
 ENV DEBIAN_FRONTEND=noninteractive
@@ -71,11 +76,11 @@ RUN CCACHE_DIR=$(ccache -p | grep cache_dir | grep -oE "[^ ]+$") \
  && CCACHE_DIR_PARENT=$(dirname ${CCACHE_DIR}) \
  && mkdir -p ${CCACHE_DIR_PARENT} \
  && cd ${CCACHE_DIR_PARENT} \
- && (wget -q https://storage.googleapis.com/open3d-ci-cache/${CCACHE_TAR_NAME}.tar.gz || true) \
- && if [ -f ${CCACHE_TAR_NAME}.tar.gz ]; then tar -xf ${CCACHE_TAR_NAME}.tar.gz; fi
+ && (wget -q https://storage.googleapis.com/open3d-ci-cache/${CCACHE_TAR_NAME}.tar.xz https://storage.googleapis.com/open3d-ci-cache/${CCACHE_TAR_NAME}.tar.gz || true) \
+ && if [ -f ${CCACHE_TAR_NAME}.tar.?z ]; then tar -xf ${CCACHE_TAR_NAME}.tar.?z; fi
 # We need to set ccache size explicitly with -M, otherwise the default size is
 # *not* determined by ccache's default, but the downloaded ccache file's config.
-RUN ccache -M 5G \
+RUN ccache -M 4G \
  && ccache -s
 
 # Miniconda
@@ -90,10 +95,10 @@ RUN conda create -y -n open3d python=${PYTHON_VERSION} \
 RUN which python \
  && python --version
 
-# Checkout Open3D-ML master branch
+# Checkout Open3D-ML main branch
 # TODO: We may add support for local Open3D-ML repo or pinned ML repo tag
 ENV OPEN3D_ML_ROOT=/root/Open3D-ML
-RUN git clone https://github.com/isl-org/Open3D-ML.git ${OPEN3D_ML_ROOT}
+RUN git clone --depth 1 https://github.com/isl-org/Open3D-ML.git ${OPEN3D_ML_ROOT}
 
 # Open3D C++ dependencies
 # Done before copying the full Open3D directory for better Docker caching
@@ -106,8 +111,9 @@ COPY ./util/ci_utils.sh /root/Open3D/util/
 COPY ./python/requirements.txt /root/Open3D/python/
 COPY ./python/requirements_jupyter_build.txt /root/Open3D/python/
 COPY ./python/requirements_jupyter_install.txt /root/Open3D/python/
+COPY ./python/requirements_build.txt /root/Open3D/python/
 RUN source /root/Open3D/util/ci_utils.sh \
- && install_python_dependencies with-cuda with-jupyter
+ && install_python_dependencies with-jupyter
 
 # Open3D Jupyter dependencies
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
@@ -125,10 +131,10 @@ WORKDIR /root/Open3D
 # Build python wheel
 RUN export NPROC=$(nproc) \
  && export BUILD_SHARED_LIBS=OFF \
- && export BUILD_TENSORFLOW_OPS=ON \
- && export BUILD_PYTORCH_OPS=ON \
  && source /root/Open3D/util/ci_utils.sh \
- && build_pip_package build_azure_kinect build_jupyter
+ && build_pip_package build_azure_kinect build_jupyter \
+ && if [ ${CI:-}a != a ]; then cd /root/Open3D/build/ && ls | grep -Ev '^lib$' | xargs rm -rf ; fi
+ # remove build folder (except lib) to save CI space on Github
 
 # Compress ccache folder, move to / directory
 RUN ccache -s \
@@ -136,6 +142,6 @@ RUN ccache -s \
  && CCACHE_DIR_NAME=$(basename ${CCACHE_DIR}) \
  && CCACHE_DIR_PARENT=$(dirname ${CCACHE_DIR}) \
  && cd ${CCACHE_DIR_PARENT} \
- && tar -czf /${CCACHE_TAR_NAME}.tar.gz ${CCACHE_DIR_NAME}
+ && tar -caf /${CCACHE_TAR_NAME}.tar.xz ${CCACHE_DIR_NAME}
 
 RUN echo "Docker build done."

@@ -1,29 +1,11 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
+#include <vtkImageData.h>
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
 
@@ -41,6 +23,14 @@ namespace vtkutils {
 /// Logs an error if no conversion exists.
 int DtypeToVtkType(const core::Dtype& dtype);
 
+/// Creates a vtkImageData object from a Tensor.
+/// The returned object may directly use the memory of the tensor and the tensor
+/// must be kept alive until the returned vtkImageData is deleted.
+/// \param tensor The source tensor.
+/// \param copy If true always create a copy of the data.
+vtkSmartPointer<vtkImageData> CreateVtkImageDataFromTensor(core::Tensor& tensor,
+                                                           bool copy = false);
+
 /// Creates a vtkPolyData object from a point cloud or triangle mesh.
 /// The returned vtkPolyData object may directly use the memory of the tensors
 /// stored inside the Geometry object. Therefore, the Geometry object must be
@@ -57,9 +47,8 @@ int DtypeToVtkType(const core::Dtype& dtype);
 ///  will not be added to the vtkPolyData. The exclusion set has precedence over
 ///  the included keys.
 /// \param face_attr_exclude A set of keys for which face attributes will not be
-/// added
-///  to the vtkPolyData. The exclusion set has precedence over the included
-///  keys.
+/// added to the vtkPolyData. The exclusion set has precedence over the included
+/// keys.
 vtkSmartPointer<vtkPolyData> CreateVtkPolyDataFromGeometry(
         const Geometry& geometry,
         const std::unordered_set<std::string>& point_attr_include,
@@ -142,6 +131,30 @@ LineSet ExtrudeLinearLineSet(const PointCloud& pointcloud,
                              const core::Tensor& vector,
                              double scale,
                              bool capping);
+
+/// Computes the normals for a mesh.
+/// In addition to computing the normals this function can fix the face vertex
+/// order and orient the normals to point outwards.
+/// This function can be applied to non-manifold or non-closed meshes but
+/// without any guarantees to correctness or quality for the result.
+/// \param mesh A point cloud.
+/// \param vertex_normals If true compute the vertex normals.
+/// \param face_normals If true compute the face normals.
+/// \param consistency If true the algorithm fixes the vertex order of faces.
+/// \param auto_orient_normals If true normals will be flipped to point
+/// outwards
+/// \param splitting If true allows splitting of edges to account for
+/// sharp edges. Splitting an edge will create new vertices.
+/// \param feature_angle_deg The angle in degrees that defines sharp edges for
+/// splitting.
+/// \return A new mesh with the computed normals.
+TriangleMesh ComputeNormals(const TriangleMesh& mesh,
+                            bool vertex_normals,
+                            bool face_normals,
+                            bool consistency,
+                            bool auto_orient_normals,
+                            bool splitting,
+                            double feature_angle_deg = 30);
 
 }  // namespace vtkutils
 }  // namespace geometry

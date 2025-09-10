@@ -1,27 +1,8 @@
 # ----------------------------------------------------------------------------
 # -                        Open3D: www.open3d.org                            -
 # ----------------------------------------------------------------------------
-# The MIT License (MIT)
-#
-# Copyright (c) 2018-2021 www.open3d.org
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
+# Copyright (c) 2018-2024 www.open3d.org
+# SPDX-License-Identifier: MIT
 # ----------------------------------------------------------------------------
 
 from ...python.ops import ops
@@ -140,6 +121,11 @@ class FixedRadiusSearch(tf.keras.layers.Layer):
             queries_row_splits = queries.row_splits
             queries = queries.values
 
+        if isinstance(radius, tf.Tensor):
+            radius_ = tf.cast(radius, points.dtype)
+        else:
+            radius_ = radius
+
         if points_row_splits is None:
             points_row_splits = tf.cast(tf.stack([0, tf.shape(points)[0]]),
                                         dtype=tf.int64)
@@ -150,7 +136,7 @@ class FixedRadiusSearch(tf.keras.layers.Layer):
             table = ops.build_spatial_hash_table(
                 max_hash_table_size=self.max_hash_table_size,
                 points=points,
-                radius=radius,
+                radius=radius_,
                 points_row_splits=points_row_splits,
                 hash_table_size_factor=hash_table_size_factor)
         else:
@@ -161,7 +147,7 @@ class FixedRadiusSearch(tf.keras.layers.Layer):
             metric=self.metric,
             points=points,
             queries=queries,
-            radius=radius,
+            radius=radius_,
             points_row_splits=points_row_splits,
             queries_row_splits=queries_row_splits,
             hash_table_splits=table.hash_table_splits,

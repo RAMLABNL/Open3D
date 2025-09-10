@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "pybind/pipelines/color_map/color_map.h"
@@ -38,7 +19,19 @@ namespace open3d {
 namespace pipelines {
 namespace color_map {
 
-void pybind_color_map_options(py::module &m) {
+void pybind_color_map_declarations(py::module &m) {
+    py::module m_color_map =
+            m.def_submodule("color_map", "Color map optimization pipeline");
+    py::class_<pipelines::color_map::RigidOptimizerOption>
+            rigid_optimizer_option(m_color_map, "RigidOptimizerOption",
+                                   "Rigid optimizer option class.");
+    py::class_<pipelines::color_map::NonRigidOptimizerOption>
+            non_rigid_optimizer_option(m_color_map, "NonRigidOptimizerOption",
+                                       "Non Rigid optimizer option class.");
+}
+
+void pybind_color_map_definitions(py::module &m) {
+    auto m_color_map = static_cast<py::module>(m.attr("color_map"));
     static std::unordered_map<std::string, std::string> colormap_docstrings = {
             {"non_rigid_camera_coordinate",
              "bool: (Default ``False``) Set to ``True`` to enable non-rigid "
@@ -105,10 +98,9 @@ void pybind_color_map_options(py::module &m) {
              "If specified, the intermediate results will be stored in in the "
              "debug output dir. Existing files will be overwritten if the "
              "names are the same."}};
-
-    py::class_<pipelines::color_map::RigidOptimizerOption>
-            rigid_optimizer_option(m, "RigidOptimizerOption",
-                                   "Rigid optimizer option class.");
+    auto rigid_optimizer_option =
+            static_cast<py::class_<pipelines::color_map::RigidOptimizerOption>>(
+                    m_color_map.attr("RigidOptimizerOption"));
     rigid_optimizer_option.def(
             py::init([](int maximum_iteration, double maximum_allowable_depth,
                         double depth_threshold_for_visibility_check,
@@ -139,12 +131,11 @@ void pybind_color_map_options(py::module &m) {
             "image_boundary_margin"_a = 10, "invisible_vertex_color_knn"_a = 3,
             "debug_output_dir"_a = "");
 
-    docstring::ClassMethodDocInject(m, "RigidOptimizerOption", "__init__",
-                                    colormap_docstrings);
-
-    py::class_<pipelines::color_map::NonRigidOptimizerOption>
-            non_rigid_optimizer_option(m, "NonRigidOptimizerOption",
-                                       "Non Rigid optimizer option class.");
+    docstring::ClassMethodDocInject(m_color_map, "RigidOptimizerOption",
+                                    "__init__", colormap_docstrings);
+    auto non_rigid_optimizer_option = static_cast<
+            py::class_<pipelines::color_map::NonRigidOptimizerOption>>(
+            m_color_map.attr("NonRigidOptimizerOption"));
     non_rigid_optimizer_option.def(
             py::init([](int number_of_vertical_anchors,
                         double non_rigid_anchor_point_weight,
@@ -183,23 +174,14 @@ void pybind_color_map_options(py::module &m) {
             "image_boundary_margin"_a = 10, "invisible_vertex_color_knn"_a = 3,
             "debug_output_dir"_a = "");
 
-    docstring::ClassMethodDocInject(m, "NonRigidOptimizerOption", "__init__",
-                                    colormap_docstrings);
-}
-
-void pybind_color_map_classes(py::module &m) {
-    m.def("run_rigid_optimizer", &pipelines::color_map::RunRigidOptimizer,
-          "Run rigid optimization.");
-    m.def("run_non_rigid_optimizer",
-          &pipelines::color_map::RunNonRigidOptimizer,
-          "Run non-rigid optimization.");
-}
-
-void pybind_color_map(py::module &m) {
-    py::module m_submodule =
-            m.def_submodule("color_map", "Color map optimization pipeline");
-    pybind_color_map_options(m_submodule);
-    pybind_color_map_classes(m_submodule);
+    docstring::ClassMethodDocInject(m_color_map, "NonRigidOptimizerOption",
+                                    "__init__", colormap_docstrings);
+    m_color_map.def("run_rigid_optimizer",
+                    &pipelines::color_map::RunRigidOptimizer,
+                    "Run rigid optimization.");
+    m_color_map.def("run_non_rigid_optimizer",
+                    &pipelines::color_map::RunNonRigidOptimizer,
+                    "Run non-rigid optimization.");
 }
 
 }  // namespace color_map

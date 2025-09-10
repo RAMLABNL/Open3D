@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/geometry/PointCloud.h"
@@ -37,6 +18,7 @@
 #include "open3d/io/ImageIO.h"
 #include "open3d/io/PinholeCameraTrajectoryIO.h"
 #include "open3d/io/PointCloudIO.h"
+#include "open3d/utility/Random.h"
 #include "open3d/visualization/utility/DrawGeometry.h"
 #include "tests/Tests.h"
 
@@ -208,6 +190,83 @@ TEST(PointCloud, GetOrientedBoundingBox) {
     pcd = geometry::PointCloud({{0, 2, 4}, {7, 9, 1}, {5, 2, 0}, {3, 8, 7}});
     obb = pcd.GetOrientedBoundingBox();
     EXPECT_GT(obb.R_.determinant(), 0.999);
+}
+
+TEST(PointCloud, GetMinimalOrientedBoundingBox) {
+    geometry::PointCloud pcd;
+    geometry::OrientedBoundingBox obb;
+
+    // Empty (GetOrientedBoundingBox requires >=4 points)
+    pcd = geometry::PointCloud();
+    EXPECT_ANY_THROW(pcd.GetMinimalOrientedBoundingBox());
+
+    // Point
+    pcd = geometry::PointCloud({{0, 0, 0}});
+    EXPECT_ANY_THROW(pcd.GetMinimalOrientedBoundingBox());
+    pcd = geometry::PointCloud({{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}});
+    EXPECT_ANY_THROW(pcd.GetMinimalOrientedBoundingBox());
+    EXPECT_NO_THROW(pcd.GetMinimalOrientedBoundingBox(true));
+
+    // Line
+    pcd = geometry::PointCloud({{0, 0, 0}, {1, 1, 1}});
+    EXPECT_ANY_THROW(pcd.GetMinimalOrientedBoundingBox());
+    pcd = geometry::PointCloud({{0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}});
+    EXPECT_ANY_THROW(pcd.GetMinimalOrientedBoundingBox());
+    EXPECT_NO_THROW(pcd.GetMinimalOrientedBoundingBox(true));
+
+    // Plane
+    pcd = geometry::PointCloud({{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {0, 1, 1}});
+    EXPECT_ANY_THROW(pcd.GetMinimalOrientedBoundingBox());
+    EXPECT_NO_THROW(pcd.GetMinimalOrientedBoundingBox(true));
+
+    // Valid 4 points
+    pcd = geometry::PointCloud({{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {1, 1, 1}});
+    pcd.GetMinimalOrientedBoundingBox();
+
+    // 8 points with known ground truth
+    pcd = geometry::PointCloud({{0, 0, 0},
+                                {0, 0, 1},
+                                {0, 2, 0},
+                                {0, 2, 1},
+                                {3, 0, 0},
+                                {3, 0, 1},
+                                {3, 2, 0},
+                                {3, 2, 1}});
+    obb = pcd.GetMinimalOrientedBoundingBox();
+    EXPECT_EQ(obb.center_, Eigen::Vector3d(1.5, 1, 0.5));
+    EXPECT_EQ(obb.extent_, Eigen::Vector3d(3, 2, 1));
+    EXPECT_EQ(obb.color_, Eigen::Vector3d(1, 1, 1));
+    ExpectEQ(Sort(obb.GetBoxPoints()),
+             Sort(std::vector<Eigen::Vector3d>({{0, 0, 0},
+                                                {0, 0, 1},
+                                                {0, 2, 0},
+                                                {0, 2, 1},
+                                                {3, 0, 0},
+                                                {3, 0, 1},
+                                                {3, 2, 0},
+                                                {3, 2, 1}})));
+
+    // Check for a bug where the OBB rotation contained a reflection for this
+    // example.
+    pcd = geometry::PointCloud({{0, 2, 4}, {7, 9, 1}, {5, 2, 0}, {3, 8, 7}});
+    obb = pcd.GetMinimalOrientedBoundingBox();
+    EXPECT_GT(obb.R_.determinant(), 0.999);
+
+    // should always be equal/smaller than axis aligned- & oriented bounding box
+    pcd = geometry::PointCloud({{0.866, 0.474, 0.659},
+                                {0.943, 0.025, 0.789},
+                                {0.386, 0.264, 0.691},
+                                {0.938, 0.588, 0.496},
+                                {0.221, 0.116, 0.257},
+                                {0.744, 0.182, 0.052},
+                                {0.019, 0.525, 0.699},
+                                {0.722, 0.134, 0.668}});
+    geometry::OrientedBoundingBox mobb = pcd.GetMinimalOrientedBoundingBox();
+    ;
+    obb = pcd.GetOrientedBoundingBox();
+    geometry::AxisAlignedBoundingBox aabb = pcd.GetAxisAlignedBoundingBox();
+    EXPECT_GT(obb.Volume(), mobb.Volume());
+    EXPECT_GT(aabb.Volume(), mobb.Volume());
 }
 
 TEST(PointCloud, Transform) {
@@ -819,11 +878,17 @@ TEST(PointCloud, FarthestPointDownSample) {
                               {1.0, 1.0, 1.5}});
     std::shared_ptr<geometry::PointCloud> pcd_down =
             pcd.FarthestPointDownSample(4);
-    ExpectEQ(pcd_down->points_, std::vector<Eigen::Vector3d>({{0, 2.0, 0},
-                                                              {1.0, 1.0, 0},
-                                                              {1.0, 0, 1.0},
-                                                              {0, 1.0, 1.0}}));
-}  // namespace tests
+    std::vector<Eigen::Vector3d> expected = {
+            {0, 2.0, 0}, {1.0, 1.0, 0}, {1.0, 0, 1.0}, {0, 1.0, 1.0}};
+
+    std::shared_ptr<geometry::PointCloud> pcd_down_2 =
+            pcd.FarthestPointDownSample(4, 4);
+    std::vector<Eigen::Vector3d> expected_2 = {
+            {0, 2.0, 0}, {1.0, 1.0, 0}, {0, 0, 1.0}, {1.0, 1.0, 1.5}};
+
+    ExpectEQ(pcd_down->points_, expected);
+    ExpectEQ(pcd_down_2->points_, expected_2);
+}
 
 TEST(PointCloud, Crop_AxisAlignedBoundingBox) {
     geometry::AxisAlignedBoundingBox aabb({0, 0, 0}, {2, 2, 2});
@@ -921,6 +986,38 @@ TEST(PointCloud, Crop_OrientedBoundingBox) {
                                             2.0 * Eigen::Matrix3d::Identity(),
                                             3.0 * Eigen::Matrix3d::Identity(),
                                     }));
+}
+
+TEST(PointCloud, Crop_AxisAlignedBoundingBox_Invert) {
+    geometry::AxisAlignedBoundingBox aabb({0, 0, 0}, {2, 2, 2});
+    geometry::PointCloud pcd({{0, 0, 0},
+                              {2, 2, 2},
+                              {1, 1, 1},
+                              {1, 1, 2},
+                              {3, 1, 1},
+                              {-1, 1, 1}});
+    pcd.normals_ = {{0, 0, 0}, {1, 0, 0}, {2, 0, 0},
+                    {3, 0, 0}, {4, 0, 0}, {5, 0, 0}};
+    pcd.colors_ = {{0.0, 0.0, 0.0}, {0.1, 0.0, 0.0}, {0.2, 0.0, 0.0},
+                   {0.3, 0.0, 0.0}, {0.4, 0.0, 0.0}, {0.5, 0.0, 0.0}};
+    pcd.covariances_ = {
+            0.0 * Eigen::Matrix3d::Identity(),
+            1.0 * Eigen::Matrix3d::Identity(),
+            2.0 * Eigen::Matrix3d::Identity(),
+            3.0 * Eigen::Matrix3d::Identity(),
+            4.0 * Eigen::Matrix3d::Identity(),
+            5.0 * Eigen::Matrix3d::Identity(),
+    };
+    std::shared_ptr<geometry::PointCloud> pc_crop = pcd.Crop(aabb, true);
+    ExpectEQ(pc_crop->points_,
+             std::vector<Eigen::Vector3d>({{3, 1, 1}, {-1, 1, 1}}));
+    ExpectEQ(pc_crop->normals_,
+             std::vector<Eigen::Vector3d>({{4, 0, 0}, {5, 0, 0}}));
+    ExpectEQ(pc_crop->colors_,
+             std::vector<Eigen::Vector3d>({{0.4, 0.0, 0.0}, {0.5, 0.0, 0.0}}));
+    ExpectEQ(pc_crop->covariances_,
+             std::vector<Eigen::Matrix3d>({4.0 * Eigen::Matrix3d::Identity(),
+                                           5.0 * Eigen::Matrix3d::Identity()}));
 }
 
 TEST(PointCloud, EstimateNormals) {
@@ -1311,6 +1408,73 @@ TEST(PointCloud, SegmentPlaneSpecialCase) {
     EXPECT_ANY_THROW(pcd.SegmentPlane(0.01, 3, 10, 0));
     EXPECT_ANY_THROW(pcd.SegmentPlane(0.01, 3, 10, -1));
     EXPECT_ANY_THROW(pcd.SegmentPlane(0.01, 3, 10, 1.5));
+}
+
+TEST(PointCloud, SegmentPlaneDeterministic) {
+    geometry::PointCloud pcd;
+    data::PCDPointCloud pointcloud_pcd;
+    io::ReadPointCloud(pointcloud_pcd.GetPath(), pcd);
+    EXPECT_EQ(pcd.points_.size(), 113662);
+
+    // Hard-coded test
+    Eigen::Vector4d plane_model;
+    std::vector<size_t> inliers;
+    utility::random::Seed(0);
+    std::tie(plane_model, inliers) = pcd.SegmentPlane(0.01, 3, 1000, 1.0);
+    ExpectEQ(plane_model, Eigen::Vector4d(-0.06, -0.10, 0.99, -1.06), 0.1);
+
+    // Test segment plane for 10 times with the same random seed.
+    for (int i = 0; i < 10; ++i) {
+        // Reset random seed.
+        utility::random::Seed(0);
+        Eigen::Vector4d plane_model_d;
+        std::vector<size_t> inliers_d;
+        std::tie(plane_model_d, inliers_d) =
+                pcd.SegmentPlane(0.01, 3, 1000, 1.0);
+        ExpectEQ(plane_model, plane_model_d);
+    }
+}
+
+TEST(PointCloud, DetectPlanarPatches) {
+    geometry::PointCloud pcd;
+    data::PCDPointCloud pointcloud_pcd;
+    io::ReadPointCloud(pointcloud_pcd.GetPath(), pcd);
+    EXPECT_EQ(pcd.points_.size(), 113662);
+
+    static constexpr int nrNeighbors = 75;
+    const geometry::KDTreeSearchParam& search_param =
+            geometry::KDTreeSearchParamKNN(nrNeighbors);
+    pcd.EstimateNormals(search_param);
+
+    // set parameters
+    constexpr double normal_variance_threshold_deg = 60;
+    constexpr double coplanarity_deg = 89;
+    constexpr double outlier_ratio = 0.25;
+    constexpr double min_plane_edge_length = 0.0;
+    constexpr size_t min_num_points = 30;
+
+    std::vector<std::shared_ptr<geometry::OrientedBoundingBox>> patches;
+    patches = pcd.DetectPlanarPatches(
+            normal_variance_threshold_deg, coplanarity_deg, outlier_ratio,
+            min_plane_edge_length, min_num_points, search_param);
+
+    EXPECT_EQ(patches.size(), 6);
+
+    double largest_area = 0;
+    std::shared_ptr<geometry::OrientedBoundingBox> largest_patch;
+    for (const auto& obox : patches) {
+        const double area = obox->extent_.x() * obox->extent_.y();
+        if (area > largest_area) {
+            largest_patch = obox;
+            largest_area = area;
+        }
+    }
+
+    const Eigen::Vector3d n = largest_patch->R_.col(2);
+    const double d = -n.dot(largest_patch->center_);
+    Eigen::Vector4d plane_model = Eigen::Vector4d(n.x(), n.y(), n.z(), d);
+
+    ExpectEQ(plane_model, Eigen::Vector4d(0.06, 0.10, -0.99, 1.06), 0.1);
 }
 
 TEST(PointCloud, CreateFromDepthImage) {

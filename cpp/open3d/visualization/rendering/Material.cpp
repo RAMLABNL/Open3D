@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/visualization/rendering/Material.h"
@@ -45,6 +26,7 @@ void Material::SetDefaultProperties() {
     SetTransmission(1.f);
     SetAbsorptionColor(Eigen::Vector4f(1.f, 1.f, 1.f, 1.f));
     SetAbsorptionDistance(1.f);
+    SetEmissiveColor(Eigen::Vector4f(1.f, 1.f, 1.f, 1.f));
     SetPointSize(3.f);
     SetLineWidth(1.f);
 }
@@ -56,6 +38,24 @@ void Material::SetTextureMap(const std::string &key,
     // asynchronously copied to the GPU and we want to make sure the Image data
     // doesn't get modified while being copied.
     texture_maps_[key] = image.To(core::Device("CPU:0"), true);
+}
+
+std::string Material::ToString() const {
+    if (!IsValid()) {
+        return "Invalid Material\n";
+    }
+    std::ostringstream os;
+    os << "Material " << material_name_ << '\n';
+    for (const auto &kv : scalar_properties_) {
+        os << '\t' << kv.first << ": " << kv.second << '\n';
+    }
+    for (const auto &kv : vector_properties_) {
+        os << '\t' << kv.first << ": " << kv.second.transpose() << '\n';
+    }
+    for (const auto &kv : texture_maps_) {
+        os << '\t' << kv.first << ": " << kv.second.ToString() << '\n';
+    }
+    return os.str();
 }
 
 void Material::ToMaterialRecord(MaterialRecord &record) const {
@@ -81,6 +81,9 @@ void Material::ToMaterialRecord(MaterialRecord &record) const {
     }
     if (HasAnisotropy()) {
         record.base_anisotropy = GetAnisotropy();
+    }
+    if (HasEmissiveColor()) {
+        record.emissive_color = GetEmissiveColor();
     }
     if (HasThickness()) {
         record.thickness = GetThickness();
@@ -141,6 +144,62 @@ void Material::ToMaterialRecord(MaterialRecord &record) const {
         record.ao_rough_metal_img = std::make_shared<geometry::Image>(
                 GetAORoughnessMetalMap().ToLegacy());
     }
+}
+
+Material Material::FromMaterialRecord(const MaterialRecord &record) {
+    using t::geometry::Image;
+    Material tmat(record.shader);
+    // scalar and vector properties
+    tmat.SetBaseColor(record.base_color);
+    tmat.SetBaseMetallic(record.base_metallic);
+    tmat.SetBaseRoughness(record.base_roughness);
+    tmat.SetBaseReflectance(record.base_reflectance);
+    tmat.SetBaseClearcoat(record.base_clearcoat);
+    tmat.SetBaseClearcoatRoughness(record.base_clearcoat_roughness);
+    tmat.SetAnisotropy(record.base_anisotropy);
+    tmat.SetEmissiveColor(record.emissive_color);
+    // refractive materials
+    tmat.SetThickness(record.thickness);
+    tmat.SetTransmission(record.transmission);
+    tmat.SetAbsorptionDistance(record.absorption_distance);
+    // points and lines
+    tmat.SetPointSize(record.point_size);
+    tmat.SetLineWidth(record.line_width);
+    // maps
+    if (record.albedo_img) {
+        tmat.SetAlbedoMap(Image::FromLegacy(*record.albedo_img));
+    }
+    if (record.normal_img) {
+        tmat.SetNormalMap(Image::FromLegacy(*record.normal_img));
+    }
+    if (record.ao_img) {
+        tmat.SetAOMap(Image::FromLegacy(*record.ao_img));
+    }
+    if (record.metallic_img) {
+        tmat.SetMetallicMap(Image::FromLegacy(*record.metallic_img));
+    }
+    if (record.roughness_img) {
+        tmat.SetRoughnessMap(Image::FromLegacy(*record.roughness_img));
+    }
+    if (record.reflectance_img) {
+        tmat.SetReflectanceMap(Image::FromLegacy(*record.reflectance_img));
+    }
+    if (record.clearcoat_img) {
+        tmat.SetClearcoatMap(Image::FromLegacy(*record.clearcoat_img));
+    }
+    if (record.clearcoat_roughness_img) {
+        tmat.SetClearcoatRoughnessMap(
+                Image::FromLegacy(*record.clearcoat_roughness_img));
+    }
+    if (record.anisotropy_img) {
+        tmat.SetAnisotropyMap(Image::FromLegacy(*record.anisotropy_img));
+    }
+    if (record.ao_rough_metal_img) {
+        tmat.SetAORoughnessMetalMap(
+                Image::FromLegacy(*record.ao_rough_metal_img));
+    }
+
+    return tmat;
 }
 
 }  // namespace rendering

@@ -1,29 +1,11 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
+#include <vtkFlyingEdges3D.h>
 #include <vtkLinearExtrusionFilter.h>
 #include <vtkNew.h>
 #include <vtkTextSource.h>
@@ -302,6 +284,28 @@ TriangleMesh TriangleMesh::CreateText(const std::string &text,
     tmesh.GetTriangleIndices() =
             tmesh.GetTriangleIndices().To(device, int_dtype);
     return tmesh;
+}
+
+TriangleMesh TriangleMesh::CreateIsosurfaces(
+        const core::Tensor &volume,
+        const std::vector<double> contour_values,
+        const core::Device &device) {
+    using namespace vtkutils;
+    core::AssertTensorShape(volume, {core::None, core::None, core::None});
+    core::AssertTensorDtypes(volume, {core::Float32, core::Float64});
+
+    auto image_data = vtkutils::CreateVtkImageDataFromTensor(
+            const_cast<core::Tensor &>(volume));
+    vtkNew<vtkFlyingEdges3D> method;
+    method->SetNumberOfContours(contour_values.size());
+    for (int i = 0; i < int(contour_values.size()); ++i) {
+        method->SetValue(i, contour_values[i]);
+    }
+    method->SetInputData(image_data);
+    method->Update();
+    auto polydata = method->GetOutput();
+    auto tmesh = CreateTriangleMeshFromVtkPolyData(polydata);
+    return tmesh.To(device);
 }
 
 }  // namespace geometry

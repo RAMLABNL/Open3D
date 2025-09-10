@@ -1,4 +1,5 @@
 name: Documentation
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -9,7 +10,7 @@ on:
         default: 'ON'
   push:
     branches:
-      - master
+      - main
   pull_request:
     types: [opened, reopened, synchronize]
 
@@ -17,19 +18,19 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  GCE_CLI_GHA_VERSION: '302.0.0'      # Fixed to avoid dependency on API changes
-
 jobs:
-  headless-docs:
-    # Build headless and docs
-    runs-on: ubuntu-18.04
+  headless-docs:   # Build headless and docs
+    permissions:
+      contents: write  # Artifact upload and release upload
+    # Pinning to 22.04 instead of ubuntu-latest until 24.04 is supported
+    # (see https://github.com/isl-org/Open3D/pull/7105)
+    runs-on: ubuntu-22.04
     env:
       OPEN3D_ML_ROOT: ${{ github.workspace }}/Open3D-ML
       DEVELOPER_BUILD: ${{ github.event.inputs.developer_build || 'ON' }}
     steps:
       - name: Checkout Open3D source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Maximize build space
         run: |
@@ -37,13 +38,13 @@ jobs:
           maximize_ubuntu_github_actions_build_space
 
       - name: Checkout Open3D-ML source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: isl-org/Open3D-ML
           path: ${{ env.OPEN3D_ML_ROOT }}
 
       - name: Setup cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           # Ref: https://github.com/apache/incubator-mxnet/pull/18459/files
           path: ~/.ccache
@@ -56,25 +57,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-ccache
       - name: Set up Python version
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.7
-      - name: GCloud CLI setup
-        uses: google-github-actions/setup-gcloud@v0.2.1
-        with:
-          version: ${{ env.GCE_CLI_GHA_VERSION }}
-          service_account_key: ${{ secrets.GCE_SA_KEY_DOCS_CI }}
-          project_id: ${{ secrets.GCE_DOCS_PROJECT }}
-          export_default_credentials: true
+          python-version: '3.11'
 
       - name: Install dependencies
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          # the build system of the main repo expects a master branch. make sure
-          # master exists
+          # the build system of the main repo expects a main branch. make sure
+          # main exists
           pushd "${OPEN3D_ML_ROOT}"
-          git checkout -b master || true
+          git checkout -b main || true
           popd
           source util/ci_utils.sh
           install_docs_dependencies "${OPEN3D_ML_ROOT}"
@@ -85,38 +79,25 @@ jobs:
           ccache -s
           source util/ci_utils.sh
           build_docs "$DEVELOPER_BUILD"
+          # PWD: Open3D/docs
           ccache -s
+          tar_file="open3d-${GITHUB_SHA}-docs.tar.gz"
+          rm -rf "${GITHUB_WORKSPACE}/${tar_file}"
+          # Docs in docs/_out/html
+          tar -C _out -cvzf "${GITHUB_WORKSPACE}/${tar_file}" html
 
       - name: Upload docs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: open3d_docs
-          path: docs/_out/html
+          name: open3d-${{ github.sha }}-docs.tar.gz
+          path: open3d-${{ github.sha }}-docs.tar.gz
           if-no-files-found: error
+          compression-level: 0 # no compression
 
-      - name: Deploy docs
-        if: ${{ github.ref == 'refs/heads/master' }}
+      - name: Update devel release
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Compress and upload the docs, only for master branch
-          docs_out_dir="docs/_out" # Docs in ${docs_out_dir}/html
-          tar_file="${{ github.sha }}_ready.tar.gz"
-          rm -rf ${tar_file}
-          tar -C ${docs_out_dir} -czvf ${tar_file} html
-          gsutil cp ${tar_file} gs://open3d-docs/${tar_file}
-          echo "Docs archive uploaded to:"
-          echo "https://storage.googleapis.com/open3d-docs/${tar_file}"
-
-      - name: Check wheels and ready documentation archive
-        if: ${{ github.ref == 'refs/heads/master' }}
-        run: |
-            if [ $(gsutil ls gs://open3d-docs/${{ github.sha }}_ready* | wc -l)\
-                -eq 4 ]; then
-                echo "All wheels and docs available. Making docs ready."
-                # Remove all marker files: Note _ at end of pattern.
-                gsutil rm gs://open3d-docs/${{ github.sha }}_ready_*
-                # Rename docs archive:
-                gsutil mv gs://open3d-docs/${{ github.sha }}_ready.tar.gz \
-                    gs://open3d-docs/${{ github.sha }}.tar.gz
-            else
-                echo "All wheels / docs not available yet."
-            fi
+          gh release upload main-devel open3d-${{ github.sha }}-docs.tar.gz --clobber
+          gh release view main-devel

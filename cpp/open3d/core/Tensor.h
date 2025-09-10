@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -594,6 +575,16 @@ public:
     void IndexSet(const std::vector<Tensor>& index_tensors,
                   const Tensor& src_tensor);
 
+    /// \brief Advanced in-place reduction by index.
+    ///
+    /// See
+    /// https://pytorch.org/docs/stable/generated/torch.Tensor.index_add_.html
+    ///
+    /// self[index[i]] = operator(self[index[i]], src[i]).
+    ///
+    /// Note: Only support 1D index and src tensors now.
+    void IndexAdd_(int64_t dim, const Tensor& index, const Tensor& src);
+
     /// \brief Permute (dimension shuffle) the Tensor, returns a view.
     ///
     /// \param dims The desired ordering of dimensions.
@@ -755,6 +746,9 @@ public:
 
     /// Element-wise negation of a tensor, in-place.
     Tensor Neg_();
+
+    /// Unary minus of a tensor, returning a new tensor.
+    Tensor operator-() const { return Neg(); }
 
     /// Element-wise exponential of a tensor, returning a new tensor.
     Tensor Exp() const;
@@ -1335,7 +1329,7 @@ protected:
 
     /// Underlying memory buffer for Tensor.
     std::shared_ptr<Blob> blob_ = nullptr;
-};  // namespace core
+};
 
 template <>
 inline Tensor::Tensor(const std::vector<bool>& init_vals,
@@ -1429,6 +1423,12 @@ inline Tensor operator*(T scalar_lhs, const Tensor& rhs) {
 template <typename T>
 inline Tensor operator/(T scalar_lhs, const Tensor& rhs) {
     return Tensor::Full({}, scalar_lhs, rhs.GetDtype(), rhs.GetDevice()) / rhs;
+}
+
+inline void AssertNotSYCL(const Tensor& tensor) {
+    if (tensor.GetDevice().IsSYCL()) {
+        utility::LogError("Not supported for SYCL device.");
+    }
 }
 
 }  // namespace core

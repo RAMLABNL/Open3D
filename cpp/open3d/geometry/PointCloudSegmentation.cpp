@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include <Eigen/Dense>
@@ -61,7 +42,6 @@ public:
                 valid_sample++;
             }
         }
-
         return samples;
     }
 
@@ -83,23 +63,24 @@ public:
 };
 
 // Calculates the number of inliers given a list of points and a plane model,
-// and the total distance between the inliers and the plane. These numbers are
-// then used to evaluate how well the plane model fits the given points.
+// and the total squared point-to-plane distance.
+// These numbers are then used to evaluate how well the plane model fits the
+// given points.
 RANSACResult EvaluateRANSACBasedOnDistance(
         const std::vector<Eigen::Vector3d> &points,
         const Eigen::Vector4d plane_model,
         std::vector<size_t> &inliers,
-        double distance_threshold,
-        double error) {
+        double distance_threshold) {
     RANSACResult result;
 
+    double error = 0;
     for (size_t idx = 0; idx < points.size(); ++idx) {
         Eigen::Vector4d point(points[idx](0), points[idx](1), points[idx](2),
                               1);
         double distance = std::abs(plane_model.dot(point));
 
         if (distance < distance_threshold) {
-            error += distance;
+            error += distance * distance;
             inliers.emplace_back(idx);
         }
     }
@@ -110,7 +91,7 @@ RANSACResult EvaluateRANSACBasedOnDistance(
         result.inlier_rmse_ = 0;
     } else {
         result.fitness_ = (double)inlier_num / (double)points.size();
-        result.inlier_rmse_ = error / std::sqrt((double)inlier_num);
+        result.inlier_rmse_ = std::sqrt(error / (double)inlier_num);
     }
     return result;
 }
@@ -169,18 +150,10 @@ std::tuple<Eigen::Vector4d, std::vector<size_t>> PointCloud::SegmentPlane(
         const int num_iterations /* = 100 */,
         const double probability /* = 0.99999999 */) const {
     if (probability <= 0 || probability > 1) {
-        utility::LogError("Probability must be > 0 or <= 1.0");
+        utility::LogError("Probability must be > 0 and <= 1.0");
     }
 
-    RANSACResult result;
-
-    // Initialize the best plane model.
-    Eigen::Vector4d best_plane_model = Eigen::Vector4d(0, 0, 0, 0);
-
     size_t num_points = points_.size();
-    RandomSampler<size_t> sampler(num_points);
-
-    // Return if ransac_n is less than the required plane model parameters.
     if (ransac_n < 3) {
         utility::LogError(
                 "ransac_n should be set to higher than or equal to 3.");
@@ -193,6 +166,17 @@ std::tuple<Eigen::Vector4d, std::vector<size_t>> PointCloud::SegmentPlane(
                                std::vector<size_t>{});
     }
 
+    RANSACResult result;
+    Eigen::Vector4d best_plane_model = Eigen::Vector4d(0, 0, 0, 0);
+
+    RandomSampler<size_t> sampler(num_points);
+    // Pre-generate all random samples before entering the parallel region
+    std::vector<std::vector<size_t>> all_sampled_indices;
+    all_sampled_indices.reserve(num_iterations);
+    for (int i = 0; i < num_iterations; i++) {
+        all_sampled_indices.push_back(sampler(ransac_n));
+    }
+
     // Use size_t here to avoid large integer which acceed max of int.
     size_t break_iteration = std::numeric_limits<size_t>::max();
     int iteration_count = 0;
@@ -203,8 +187,8 @@ std::tuple<Eigen::Vector4d, std::vector<size_t>> PointCloud::SegmentPlane(
             continue;
         }
 
-        const std::vector<size_t> sampled_indices = sampler(ransac_n);
-        std::vector<size_t> inliers = sampled_indices;
+        // Access the pre-generated sampled indices
+        std::vector<size_t> inliers = all_sampled_indices[itr];
 
         // Fit model to num_model_parameters randomly selected points among the
         // inliers.
@@ -221,10 +205,9 @@ std::tuple<Eigen::Vector4d, std::vector<size_t>> PointCloud::SegmentPlane(
             continue;
         }
 
-        double error = 0;
         inliers.clear();
         auto this_result = EvaluateRANSACBasedOnDistance(
-                points_, plane_model, inliers, distance_threshold, error);
+                points_, plane_model, inliers, distance_threshold);
 #pragma omp critical
         {
             if (this_result.fitness_ > result.fitness_ ||

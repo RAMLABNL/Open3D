@@ -1,10 +1,11 @@
 name: Style Check
+permissions: {}
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - main
   pull_request:
     types: [opened, reopened, synchronize] # Rebuild on new pushes to PR
 
@@ -14,17 +15,19 @@ concurrency:
 
 jobs:
   style-check:
-    runs-on: ubuntu-20.04     # No need for cmake repo
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python version
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.7'
+          python-version: '3.8'
       - name: Install dependencies
         run: |
-          pip install -U clang-format~=10.0.0 yapf==0.30.0 nbformat
+          pip install -U -r python/requirements_style.txt
       - name: Run style check
         run: |
           python util/check_style.py

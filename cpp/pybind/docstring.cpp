@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "pybind/docstring.h"
@@ -220,14 +201,24 @@ std::string FunctionDoc::ToGoogleDocString() const {
         for (size_t i = 0; i < overload.argument_docs_.size(); ++i) {
             const ArgumentDoc& argument_doc = overload.argument_docs_[i];
             rc << argument_doc.name_;
+            if (argument_doc.type_ != "") {
+                rc << ": " << argument_doc.type_;
+            }
             if (argument_doc.default_ != "") {
-                rc << "=" << argument_doc.default_;
+                rc << " = " << argument_doc.default_;
             }
             if (i != overload.argument_docs_.size() - 1) {
                 rc << ", ";
             }
         }
-        rc << ")" << std::endl;
+        rc << ")";
+
+        // Return type
+        if (overload.return_doc_.type_ != "") {
+            rc << " -> " << overload.return_doc_.type_;
+        }
+
+        rc << std::endl;
 
         // Summary line, strictly speaking this shall be at the very front.
         // However from a compiled Python module we need the function signature
@@ -298,17 +289,9 @@ std::string FunctionDoc::ToGoogleDocString() const {
     return rc.str();
 }
 
-std::string FunctionDoc::NamespaceFix(const std::string& s) {
-    std::string rc = std::regex_replace(s, std::regex("::(\\S)"), ".$1");
-    rc = std::regex_replace(rc, std::regex("open3d\\.(cpu|cuda)\\.pybind\\."),
-                            "open3d.");
-    return rc;
-}
-
 std::string FunctionDoc::StringCleanAll(std::string& s,
                                         const std::string& white_space) {
     std::string rc = utility::StripString(s, white_space);
-    rc = NamespaceFix(rc);
     return rc;
 }
 
@@ -322,7 +305,7 @@ ArgumentDoc FunctionDoc::ParseArgumentToken(const std::string& argument_token) {
     std::smatch matches;
     if (std::regex_search(argument_token, matches, rgx_with_default)) {
         argument_doc.name_ = matches[1].str();
-        argument_doc.type_ = NamespaceFix(matches[2].str());
+        argument_doc.type_ = matches[2].str();
         argument_doc.default_ = matches[3].str();
 
         // Handle long default value. Long default has multiple lines and thus
@@ -344,7 +327,7 @@ ArgumentDoc FunctionDoc::ParseArgumentToken(const std::string& argument_token) {
                 "([A-Za-z_][A-Za-z\\d_:\\.\\[\\]\\(\\) ,]*)");
         if (std::regex_search(argument_token, matches, rgx_without_default)) {
             argument_doc.name_ = matches[1].str();
-            argument_doc.type_ = NamespaceFix(matches[2].str());
+            argument_doc.type_ = matches[2].str();
         }
     }
 
@@ -366,6 +349,12 @@ std::vector<std::string> FunctionDoc::GetArgumentTokens(
         str.replace(parenthesis_pos + 1, 0, ", ");
     }
 
+    // Ignore everything after last argument (right before ") ->")
+    // Otherwise false argument matches might be found in docstrings
+    std::size_t arrow_pos = str.rfind(") -> ");
+    if (arrow_pos == std::string::npos) return {};
+    str.resize(arrow_pos);
+
     // Get start positions
     std::regex pattern("(, [A-Za-z_][A-Za-z\\d_]*:)");
     std::smatch res;
@@ -385,12 +374,7 @@ std::vector<std::string> FunctionDoc::GetArgumentTokens(
     for (size_t i = 0; i + 1 < argument_start_positions.size(); ++i) {
         argument_end_positions.push_back(argument_start_positions[i + 1] - 2);
     }
-    std::size_t arrow_pos = str.rfind(") -> ");
-    if (arrow_pos == std::string::npos) {
-        return {};
-    } else {
-        argument_end_positions.push_back(arrow_pos);
-    }
+    argument_end_positions.push_back(arrow_pos);
 
     std::vector<std::string> argument_tokens;
     for (size_t i = 0; i < argument_start_positions.size(); ++i) {

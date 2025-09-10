@@ -1,27 +1,8 @@
 // ----------------------------------------------------------------------------
 // -                        Open3D: www.open3d.org                            -
 // ----------------------------------------------------------------------------
-// The MIT License (MIT)
-//
-// Copyright (c) 2018-2021 www.open3d.org
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-// IN THE SOFTWARE.
+// Copyright (c) 2018-2024 www.open3d.org
+// SPDX-License-Identifier: MIT
 // ----------------------------------------------------------------------------
 
 #include "open3d/visualization/visualizer/GuiVisualizer.h"
@@ -84,7 +65,7 @@ std::shared_ptr<gui::Dialog> CreateAboutDialog(gui::Window *window) {
             (std::string("Open3D ") + OPEN3D_VERSION).c_str());
     auto text = std::make_shared<gui::Label>(
             "The MIT License (MIT)\n"
-            "Copyright (c) 2018-2021 www.open3d.org\n\n"
+            "Copyright (c) 2018-2023 www.open3d.org\n\n"
 
             "Permission is hereby granted, free of charge, to any person "
             "obtaining a copy of this software and associated documentation "
@@ -238,9 +219,9 @@ std::shared_ptr<gui::Dialog> CreateContactDialog(gui::Window *window) {
             "Mailing list:\n"
             "Discord channel:");
     auto right_col = std::make_shared<gui::Label>(
-            "http://www.open3d.org\n"
+            "https://www.open3d.org\n"
             "http://github.org/isl-org/Open3D\n"
-            "http://www.open3d.org/index.php/subscribe/\n"
+            "https://www.open3d.org/index.php/subscribe/\n"
             "https://discord.gg/D35BGvn");
     auto ok = std::make_shared<gui::Button>("OK");
     ok->SetOnClicked([window]() { window->CloseDialog(); });
@@ -1185,10 +1166,7 @@ void GuiVisualizer::LoadGeometry(const std::string &path) {
                 model_success = false;
             }
         }
-        if (!model_success) {
-            utility::LogInfo("{} appears to be a point cloud", path.c_str());
-        }
-
+        // path appears to be a point cloud...
         auto geometry = std::shared_ptr<geometry::Geometry3D>();
         if (!model_success) {
             auto cloud = std::make_shared<geometry::PointCloud>();

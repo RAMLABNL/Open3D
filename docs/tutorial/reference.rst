@@ -3,6 +3,7 @@
 Reference
 -------------------------------------
 
+.. [ArujoAndOliveira2020] A. Araújo and M. Oliveira, A robust statistics approach for plane detection in unorganized point clouds, Pattern Recognition, 2020
 .. [Bernardini1999] F. Bernardini and J. Mittleman and HRushmeier and C. Silva and G. Taubin: The ball-pivoting algorithm for surface reconstruction, IEEE transactions on visualization and computer graphics, 5(4), 349-359, 1999
 .. [BeslAndMcKay1992] Paul J. Besl and Neil D. McKay, A Method for Registration of 3D Shapes, PAMI, 1992.
 .. [ChenAndMedioni1992] Y. Chen and G. G. Medioni, Object modelling by registration of multiple range images, Image and Vision Computing, 10(3), 1992.
@@ -12,6 +13,7 @@ Reference
 .. [Ester1996] M. Ester and H.-P. Kriegel and J Sander and X. Xu, A density-based algorithm for discovering clusters in large spatial databases with noise, KDD, 1996.
 .. [Katz2007] S. Katz and A. Tal and R. Basri, Direct visibility of point sets, SIGGRAPH, 2007.
 .. [Kazhdan2006] M. Kazhdan and M. Bolitho and H. Hoppe: Poisson surface reconstruction, Eurographics, 2006.
+.. [Knapitsch2017] A. Knapitsch and J. Park and Q. Zhou and V. Koltun: Tanks and Temples: Benchmarking Large-Scale Scene Reconstruction, ACM Transactions on Graphics, vol 36 (4), 2017
 .. [Loop1987] C. Loop: Smooth Subdivision Surfaces Based on Triangles, M.S. Mathematics thesis, University of Utah, 1987
 .. [LorensenAndCline1987] W. E. Lorensen and H. E. Cline, Marching cubes: A high resolution 3d surface construction algorithm, ACM Computer Graphics, 1987
 .. [Newcombe2011] R. A. Newcombe, S. Izadi, O. Hilliges, D. Molyneaux, D. Kim, A. J. Davison, P. Kohli, J. Shotton, S. Hodges, and A. Fitzgibbon. KinectFusion: Real-time dense surface mapping and tracking. In ISMAR, 2011.

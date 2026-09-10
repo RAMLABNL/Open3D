@@ -78,6 +78,9 @@ if (BUNDLE_OPEN3D_ML)
 endif()
 
 set(requirement_files ${PYTHON_PACKAGE_SRC_DIR}/requirements.txt)
+if(NOT BUILD_VISUALIZATION)
+    set(requirement_files ${PYTHON_PACKAGE_SRC_DIR}/requirements_backend.txt)
+endif()
 # Build Jupyter plugin.
 if (BUILD_JUPYTER_EXTENSION)
     if (WIN32 OR UNIX AND NOT LINUX_AARCH64)

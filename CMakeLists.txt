@@ -53,10 +53,14 @@ else()
     option(BUILD_ISPC_MODULE      "Build the ISPC module"                    OFF)
 endif()
 option(BUILD_COMMON_ISPC_ISAS     "Build for common ISPC ISAs (for release)" OFF)
-option(BUILD_GUI                  "Builds new GUI"                           ON )
+option(BUILD_VISUALIZATION        "Build viewers and rendering support"      ON )
+cmake_dependent_option(BUILD_GUI "Builds new GUI" ON "BUILD_VISUALIZATION" OFF)
 option(WITH_OPENMP                "Use OpenMP multi-threading"               ON )
 option(WITH_IPP                "Use Intel Integrated Performance Primitives" ON )
 option(ENABLE_HEADLESS_RENDERING  "Use OSMesa for headless rendering"        OFF)
+if(NOT BUILD_VISUALIZATION AND ENABLE_HEADLESS_RENDERING)
+    message(FATAL_ERROR "Headless rendering requires BUILD_VISUALIZATION=ON")
+endif()
 if(BUILD_SHARED_LIBS)
     option(STATIC_WINDOWS_RUNTIME "Use static (MT/MTd) Windows runtime"      OFF)
 else()
@@ -262,6 +266,24 @@ string(CONCAT OPEN3D_VERSION
     ".${OPEN3D_VERSION_PATCH}"
     ".${OPEN3D_VERSION_TWEAK}"
 )
+set(OPEN3D_RELEASE_VERSION "" CACHE STRING "Package version derived from the release tag")
+if(NOT OPEN3D_RELEASE_VERSION STREQUAL "")
+    if(NOT OPEN3D_RELEASE_VERSION MATCHES "^([0-9]+)[.]([0-9]+)[.]([0-9]+)([.]([0-9]+))?$")
+        message(FATAL_ERROR "OPEN3D_RELEASE_VERSION must contain three or four numeric components")
+    endif()
+    set(OPEN3D_VERSION_MAJOR "${CMAKE_MATCH_1}")
+    set(OPEN3D_VERSION_MINOR "${CMAKE_MATCH_2}")
+    set(OPEN3D_VERSION_PATCH "${CMAKE_MATCH_3}")
+    set(OPEN3D_VERSION_TWEAK "${CMAKE_MATCH_5}")
+    if(OPEN3D_VERSION_TWEAK STREQUAL "")
+        set(OPEN3D_VERSION_TWEAK 0)
+    endif()
+    set(OPEN3D_VERSION "${OPEN3D_RELEASE_VERSION}")
+    # Refresh metadata when the Docker build cache is reused for another tag.
+    set(OPEN3D_VERSION_FULL "${OPEN3D_VERSION}" CACHE STRING "Open3D full version." FORCE)
+    set(OPEN3D_ABI_VERSION "${OPEN3D_VERSION_MAJOR}.${OPEN3D_VERSION_MINOR}"
+        CACHE STRING "Open3D ABI version / SOVERSION (for releases only)." FORCE)
+endif()
 set(OPEN3D_VERSION_FULL "${OPEN3D_VERSION}${OPEN3D_VERSION_DEVHASH}" CACHE
     STRING "Open3D full version.")
 set(OPEN3D_ABI_VERSION "${OPEN3D_VERSION_MAJOR}.${OPEN3D_VERSION_MINOR}" CACHE
@@ -299,7 +321,9 @@ endif()
 
 # Global flag to set CXX standard.
 # This does not affect 3rd party libraries.
-set(CMAKE_CXX_STANDARD 17)
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_EXTENSIONS OFF)   # Improved compatibility
 
 # Suppress warnings for deprecated C++17 functions (stdgpu->thrust with CUDA 11 for MSVC).
@@ -538,7 +562,9 @@ include(3rdparty/find_dependencies.cmake)
 add_subdirectory(cpp)
 
 # Examples
-add_subdirectory(examples)
+if(BUILD_VISUALIZATION)
+    add_subdirectory(examples)
+endif()
 
 # Documentation
 add_subdirectory(docs)

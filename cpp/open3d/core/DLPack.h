@@ -229,7 +229,7 @@ struct formatter<DLDeviceType> {
                 text = "kDLExtDev";
                 break;
         }
-        return format_to(ctx.out(), text);
+        return fmt::format_to(ctx.out(), "{}", text);
     }
 
     template <typename ParseContext>

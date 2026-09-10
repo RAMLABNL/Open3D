@@ -62,7 +62,7 @@ public:
 
         // Check data types
         AssertTemplateDtype<T>();
-        if (!std::is_pod<T>()) {
+        if (!(std::is_standard_layout_v<T> && std::is_trivial_v<T>)) {
             utility::LogError("Object must be a POD.");
         }
 

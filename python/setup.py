@@ -103,10 +103,10 @@ if "@BUNDLE_OPEN3D_ML@" == "ON":
     with open("@OPEN3D_ML_ROOT@/requirements.txt", "r") as f:
         install_requires += [line.strip() for line in f.readlines() if line]
 
-entry_points = {
-    "console_scripts": ["open3d = @PYPI_PACKAGE_NAME@.tools.cli:main",]
-}
-if sys.platform != "darwin":  # Remove check when off main thread GUI works
+entry_points = {}
+if "@BUILD_VISUALIZATION@" == "ON":
+    entry_points["console_scripts"] = ["open3d = open3d.tools.cli:main"]
+if "@BUILD_GUI@" == "ON" and sys.platform != "darwin":
     entry_points.update({
         "tensorboard_plugins": [
             "Open3D = @PYPI_PACKAGE_NAME@.visualization.tensorboard_plugin"

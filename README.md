@@ -4,6 +4,33 @@
 
 # Open3D: A Modern Library for 3D Data Processing
 
+This RAMLAB fork packages Open3D 0.19 for CPU geometry processing. It retains
+normal-confidence Poisson reconstruction and excludes viewers, GPU backends,
+WebRTC, Jupyter, and bundled ML libraries. Python installs as `open3d-cpu` and
+imports as `open3d`; the Debian package remains `open3d`.
+
+Build with the secret-free dependency stage from the private `maxq-base` checkout:
+
+```bash
+docker build --target maxq-base-dependencies --build-arg NPROC=4 \
+    -t maxq-open3d-base:local /opt/MaxQ/maxq-base
+docker build --target artifacts --build-arg BASE_IMAGE=maxq-open3d-base:local \
+    --build-arg OPEN3D_PACKAGE_VERSION=0.19.0.101 \
+    --output type=local,dest=dist .
+```
+
+The build verifies APT and wheel installations in separate fresh base containers.
+Public workflows check source syntax. The private `maxq-base` repository owns
+release builds and GAR publication.
+
+For releases, select a fork tag using the private workflow's `open3d_tag` input.
+Tags such as `ramlab-v0.19.0.101`, `v0.19.0.101`, and `0.19.0.101` produce
+package version `0.19.0.101`. Three-part numeric versions also work.
+The workflow checks out the exact tag and passes its version into CMake, the
+Debian package, and the Python wheel. It does not require a particular branch.
+
+The upstream project information follows.
+
 <h4>
     <a href="https://www.open3d.org">Homepage</a> |
     <a href="https://www.open3d.org/docs">Docs</a> |

@@ -21,10 +21,12 @@ namespace visualization {
 
 void pybind_visualization_declarations(py::module &m) {
     py::module m_visualization = m.def_submodule("visualization");
+#ifdef BUILD_VISUALIZATION
     pybind_renderoption_declarations(m_visualization);
     pybind_viewcontrol_declarations(m_visualization);
     pybind_visualizer_declarations(m_visualization);
     pybind_visualization_utility_declarations(m_visualization);
+#endif
     // For RPC serialization
     rendering::pybind_material_declarations(m_visualization);
 #ifdef BUILD_GUI
@@ -40,10 +42,12 @@ void pybind_visualization_declarations(py::module &m) {
 
 void pybind_visualization_definitions(py::module &m) {
     auto m_visualization = static_cast<py::module>(m.attr("visualization"));
+#ifdef BUILD_VISUALIZATION
     pybind_renderoption_definitions(m_visualization);
     pybind_viewcontrol_definitions(m_visualization);
     pybind_visualizer_definitions(m_visualization);
     pybind_visualization_utility_definitions(m_visualization);
+#endif
     // For RPC serialization
     rendering::pybind_material_definitions(m_visualization);
 #ifdef BUILD_GUI

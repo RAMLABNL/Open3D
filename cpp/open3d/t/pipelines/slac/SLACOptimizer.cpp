@@ -192,11 +192,13 @@ static core::Tensor GetCorrespondenceSetForPointCloudPair(
                       inlier_ratio);
 
     if (j != i + 1 && inlier_ratio < fitness_threshold) {
+#ifdef BUILD_VISUALIZATION
         if (debug) {
             VisualizePointCloudCorrespondences(
                     tpcd_i, tpcd_j, correspondence_set,
                     T_j.Inverse().Matmul(T_i).To(device, dtype));
         }
+#endif
         return core::Tensor();
     }
 

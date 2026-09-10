@@ -1,11 +1,16 @@
 target_sources(pybind PRIVATE
+    visualization.cpp
+    rendering/material.cpp  # Tensor mesh material data
+)
+
+if(BUILD_VISUALIZATION)
+target_sources(pybind PRIVATE
     renderoption.cpp
     utility.cpp
     viewcontrol.cpp
-    visualization.cpp
     visualizer.cpp
-    rendering/material.cpp  # for RPC serialization
 )
+endif()
 
 if (BUILD_GUI)
     target_sources(pybind PRIVATE

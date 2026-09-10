@@ -421,10 +421,7 @@ void Execute(const open3d::geometry::PointCloud& pcd,
     float datax = 32.f;
     int base_depth = 0;
     int base_v_cycles = 1;
-    float confidence = 0.f;
-    if (use_normal_length_as_confidence) {
-        confidence = 1.f;
-    }
+    const float confidence = use_normal_length_as_confidence ? 1.f : 0.f;
     float point_weight = 2.f * DEFAULT_FEM_DEGREE;
     float confidence_bias = 0.f;
     float samples_per_node = 1.5f;

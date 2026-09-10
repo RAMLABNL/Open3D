@@ -34,9 +34,6 @@ deps=(
     libudev-dev
     autoconf
     libtool
-    libzmq3-dev
-    libembree-dev
-    libvtk9-dev
 )
 
 if [[ "$FILAMENT_DEPS" ]]; then     # Filament build-from-source
@@ -70,5 +67,5 @@ if [ "$(uname -m)" == "aarch64" ]; then
 fi
 
 echo "apt-get install ${deps[*]}"
-apt-get update
-apt-get install ${APT_CONFIRM} ${deps[*]}
+$SUDO apt-get update
+$SUDO apt-get install ${APT_CONFIRM} ${deps[*]}

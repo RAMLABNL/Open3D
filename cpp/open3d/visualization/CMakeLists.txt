@@ -1,5 +1,14 @@
 open3d_ispc_add_library(visualization OBJECT)
 
+if(NOT BUILD_VISUALIZATION)
+    # Tensor meshes and mesh I/O retain material data without a renderer.
+    target_sources(visualization PRIVATE rendering/Material.cpp)
+    open3d_set_global_properties(visualization)
+    open3d_set_open3d_lib_properties(visualization)
+    open3d_link_3rdparty_libraries(visualization)
+    return()
+endif()
+
 open3d_ispc_add_library(visualization_impl OBJECT)
 set_target_properties(visualization_impl PROPERTIES CXX_VISIBILITY_PRESET hidden)
 

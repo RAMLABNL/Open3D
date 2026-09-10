@@ -1,5 +1,9 @@
 # Running workflows on GitHub Actions
 
+These are archived upstream instructions. Workflows in this directory do not run.
+The fork uses `.github/workflows/check.yml` for public source checks and the
+private `maxq-base` repository for package builds and publication.
+
 ## OS versions
 
 Use the oldest available OS version (e.g. ubuntu-18.04, macos-11, windows-2019)

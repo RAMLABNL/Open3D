@@ -13,7 +13,6 @@
 
 #include "open3d/geometry/Image.h"
 #include "open3d/visualization/rendering/Gradient.h"
-#include "open3d/visualization/utility/GLHelper.h"
 
 namespace open3d {
 namespace visualization {

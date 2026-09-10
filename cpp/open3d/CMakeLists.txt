@@ -51,6 +51,7 @@ if (TARGET_TYPE STREQUAL SHARED_LIBRARY)
 endfunction()
 
 # Configure a header file to pass the version settings to the source code
+set(OPEN3D_BUILD_VISUALIZATION ${BUILD_VISUALIZATION})
 configure_file("${PROJECT_SOURCE_DIR}/cpp/open3d/Open3D.h.in"
                "${PROJECT_SOURCE_DIR}/cpp/open3d/Open3D.h")
 configure_file("${PROJECT_SOURCE_DIR}/cpp/open3d/Open3DConfig.h.in"
@@ -102,8 +103,11 @@ open3d_ispc_target_sources_TARGET_OBJECTS(Open3D PRIVATE
     tpipelines_kernel
     utility
     visualization
-    visualization_impl
 )
+
+if(BUILD_VISUALIZATION)
+    open3d_ispc_target_sources_TARGET_OBJECTS(Open3D PRIVATE visualization_impl)
+endif()
 
 if (BUILD_GUI)
     open3d_ispc_target_sources_TARGET_OBJECTS(Open3D PRIVATE

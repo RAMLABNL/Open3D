@@ -533,7 +533,7 @@ if(WITH_OPENMP)
 endif()
 
 # X11
-if(UNIX AND NOT APPLE)
+if(BUILD_VISUALIZATION AND UNIX AND NOT APPLE)
     open3d_find_package_3rdparty_library(3rdparty_x11
         QUIET
         PACKAGE X11
@@ -629,6 +629,7 @@ else()
 endif()
 
 # GLEW
+if(BUILD_VISUALIZATION)
 if(USE_SYSTEM_GLEW)
     open3d_find_package_3rdparty_library(3rdparty_glew
         HEADER
@@ -728,6 +729,8 @@ endif()
 if(TARGET Open3D::3rdparty_x11)
     target_link_libraries(3rdparty_glfw INTERFACE Open3D::3rdparty_x11)
 endif()
+
+endif() # BUILD_VISUALIZATION
 
 # TurboJPEG
 if(USE_SYSTEM_JPEG AND BUILD_AZURE_KINECT)
@@ -960,6 +963,7 @@ open3d_build_3rdparty_library(3rdparty_rply DIRECTORY rply
 list(APPEND Open3D_3RDPARTY_PRIVATE_TARGETS_FROM_CUSTOM Open3D::3rdparty_rply)
 
 # tinyfiledialogs
+if(BUILD_VISUALIZATION)
 open3d_build_3rdparty_library(3rdparty_tinyfiledialogs DIRECTORY tinyfiledialogs
     SOURCES
         include/tinyfiledialogs/tinyfiledialogs.c
@@ -967,6 +971,7 @@ open3d_build_3rdparty_library(3rdparty_tinyfiledialogs DIRECTORY tinyfiledialogs
         include/
 )
 list(APPEND Open3D_3RDPARTY_PRIVATE_TARGETS_FROM_CUSTOM Open3D::3rdparty_tinyfiledialogs)
+endif()
 
 # tinygltf
 if(USE_SYSTEM_TINYGLTF)
@@ -1076,6 +1081,9 @@ else()
 endif()
 
 # fmt
+if(OPEN3D_PACKAGE_DEBIAN)
+    find_package(fmt 10.2.1 EXACT CONFIG REQUIRED)
+endif()
 if(USE_SYSTEM_FMT)
     # MSVC >= 17.x required for building fmt 8+
     # SYCL / DPC++ needs fmt ver <8 or >= 9.2: https://github.com/fmtlib/fmt/issues/3005
@@ -1407,6 +1415,7 @@ if(BUILD_GUI)
 endif()
 
 # Headless rendering
+if(BUILD_VISUALIZATION)
 if (ENABLE_HEADLESS_RENDERING)
     open3d_find_package_3rdparty_library(3rdparty_opengl
         REQUIRED
@@ -1422,6 +1431,7 @@ else()
     set(USE_SYSTEM_OPENGL ON)
 endif()
 list(APPEND Open3D_3RDPARTY_HEADER_TARGETS_FROM_SYSTEM Open3D::3rdparty_opengl)
+endif()
 
 # RPC interface
 # zeromq

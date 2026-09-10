@@ -33,4 +33,7 @@ set(CPACK_PACKAGE_FILE_NAME
     "open3d-devel-${_sys}-${OPEN3D_VERSION_FULL}")
 set(CPACK_THREADS 0)  # Use all cores for compressing package
 
+if(OPEN3D_PACKAGE_DEBIAN)
+    include(${PROJECT_SOURCE_DIR}/packaging/debian.cmake)
+endif()
 include(CPack)

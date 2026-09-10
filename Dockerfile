@@ -1,75 +1,59 @@
-FROM ubuntu:jammy AS o3dbuilder
-
-# For bash-specific commands
-SHELL ["/bin/bash", "-c"]
-
+# syntax=docker/dockerfile:1
+ARG BASE_IMAGE=maxq-open3d-base:local
+FROM ${BASE_IMAGE} AS dependencies
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
-ENV CCACHE_VERSION=4.3
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+       dpkg-dev patchelf libopenblas-pthread-dev liblapacke-dev \
+       libeigen3-dev libjsoncpp-dev libjpeg-dev libpng-dev \
+       libassimp-dev libzmq3-dev cppzmq-dev libmsgpack-dev libqhull-dev liblzf-dev \
+       libtbb-dev libembree-dev \
+    && apt-get clean
+RUN python3 -m venv /opt/open3d-venv \
+    && /opt/open3d-venv/bin/pip install --no-cache-dir \
+       setuptools==75.8.0 wheel==0.45.1 numpy==2.2.3 \
+       auditwheel==6.4.2 packaging==24.2
+ENV PATH=/opt/open3d-venv/bin:${PATH}
 
+FROM dependencies AS build
+ARG NPROC=4
+ARG OPEN3D_PACKAGE_VERSION
+WORKDIR /src/open3d
+COPY . .
+RUN --mount=type=cache,target=/build,sharing=locked \
+    cmake -S . -B /build -G Ninja -C packaging/backend.cmake \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_CXX_STANDARD=23 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        -DOPEN3D_RELEASE_VERSION="${OPEN3D_PACKAGE_VERSION:?Pass the version derived from the release tag}" \
+        -DPython3_EXECUTABLE=/opt/open3d-venv/bin/python \
+    && cmake --build /build --target Open3D pybind --parallel "${NPROC}"
+RUN --mount=type=cache,target=/build,sharing=locked \
+    cmake --build /build --target pip-package \
+    && cpack --config /build/CPackConfig.cmake -G DEB \
+       -B /package -D CPACK_OUTPUT_FILE_PREFIX=/package \
+    && mkdir -p /artifacts \
+    && cp /package/*.deb /artifacts/ \
+    && auditwheel repair /build/lib/python_package/pip_package/*.whl \
+       --plat manylinux_2_39_x86_64 --wheel-dir /artifacts
 
-ENV DEVELOPER_BUILD=OFF
-ENV CCACHE_TAR_NAME=open3d-ci-cpu
-ENV PYTHON_VERSION=3.10
-ENV BUILD_SHARED_LIBS=ON
-ENV BUILD_CUDA_MODULE=OFF
-ENV BUILD_TENSORFLOW_OPS=OFF
-ENV BUILD_PYTORCH_OPS=OFF
-ENV PACKAGE=ON
-ENV BUILD_SYCL_MODULE=OFF
+FROM ${BASE_IMAGE} AS verify-apt
+ARG OPEN3D_PACKAGE_VERSION
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+COPY --from=build /artifacts /artifacts
+COPY packaging/consumer /opt/open3d-consumer
+COPY packaging/verify.sh /opt/verify-open3d.sh
+RUN bash /opt/verify-open3d.sh apt "${OPEN3D_PACKAGE_VERSION}"
 
+FROM ${BASE_IMAGE} AS verify-python
+ARG OPEN3D_PACKAGE_VERSION
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+COPY --from=build /artifacts /artifacts
+COPY packaging/consumer/check_python.py /opt/open3d-consumer/check_python.py
+COPY packaging/verify.sh /opt/verify-open3d.sh
+RUN bash /opt/verify-open3d.sh python "${OPEN3D_PACKAGE_VERSION}"
 
-RUN apt update && apt install --yes software-properties-common locales && locale-gen en_US en_US.UTF-8 && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 && apt clean && rm -rf /var/lib/apt/lists/*
-ENV LANG=en_US.UTF-8
-
-RUN apt update && apt install --yes \
-    cmake git nano jq python3 python3-pandas udev libudev-dev libpq-dev python3-pip moreutils libeigen3-dev \
-    libboost-all-dev && apt clean && rm -rf /var/lib/apt/lists/*
-
-
-# Dependencies: basic
-RUN apt-get update && apt-get install -y \
-    git  \
-    wget \
-    curl \
-    build-essential \
-    pkg-config \
- && rm -rf /var/lib/apt/lists/*
-
-# Dependencies: ccache
-WORKDIR /tmp
-
-RUN git clone https://github.com/ccache/ccache.git \
- && cd ccache \
- && git checkout v${CCACHE_VERSION} -b ${CCACHE_VERSION} \
- && mkdir build \
- && cd build \
- && cmake -DCMAKE_BUILD_TYPE=Release -DZSTD_FROM_INTERNET=ON .. \
- && make install -j$(nproc) \
- && which ccache \
- && ccache --version
-
-COPY ./util/install_deps_ubuntu.sh ./util/install_deps_ubuntu.sh
-# Open3D C++ dependencies
-RUN ./util/install_deps_ubuntu.sh assume-yes && rm ./util/install_deps_ubuntu.sh
-
-# Open3D Python dependencies
-COPY ./util/ci_utils.sh /tmp/util/ci_utils.sh
-COPY ./python/requirements.txt /tmp/python/requirements.txt
-RUN source /tmp/util/ci_utils.sh \
- && if [ "${BUILD_CUDA_MODULE}" = "ON" ]; then \
-        install_python_dependencies with-cuda with-jupyter; \
-    else \
-        install_python_dependencies with-jupyter; \
-    fi \
- && pip install -r /tmp/python/requirements.txt && rm -f /tmp/python/requirements.txt
-
-# Open3D Jupyter dependencies
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
- && apt-get install -y nodejs \
- && rm -rf /var/lib/apt/lists/* \
- && node --version \
- && npm install -g yarn \
- && yarn --version
-
-RUN rm -rf /tmp/*
-WORKDIR /opt/MaxQ/
+FROM scratch AS artifacts
+COPY --from=verify-python /artifacts/ /
+COPY --from=verify-apt /verification/apt-passed /apt-passed
+COPY --from=verify-python /verification/python-passed /python-passed

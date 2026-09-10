@@ -12,7 +12,6 @@
 #include "open3d/t/geometry/kernel/Image.h"
 #include "open3d/t/pipelines/kernel/RGBDOdometry.h"
 #include "open3d/t/pipelines/kernel/TransformationConverter.h"
-#include "open3d/visualization/utility/DrawGeometry.h"
 
 namespace open3d {
 namespace t {

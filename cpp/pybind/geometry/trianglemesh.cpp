@@ -342,7 +342,9 @@ void pybind_trianglemesh_definitions(py::module &m) {
                     "three points a triangle is created.",
                     "pcd"_a, "radii"_a)
             .def_static("create_from_point_cloud_poisson",
-                        &TriangleMesh::CreateFromPointCloudPoisson,
+                        py::overload_cast<const PointCloud &, size_t, float,
+                                          float, bool, bool, int>(
+                                &TriangleMesh::CreateFromPointCloudPoisson),
                         "Function that computes a triangle mesh from a "
                         "oriented PointCloud pcd. This implements the Screened "
                         "Poisson Reconstruction proposed in Kazhdan and Hoppe, "
@@ -359,7 +361,6 @@ void pybind_trianglemesh_definitions(py::module &m) {
                     "Factory function to create a solid oriented bounding box.",
                     "obox"_a, "scale"_a = Eigen::Vector3d::Ones(),
                     "create_uv_map"_a = false)
-
             .def_static("create_box", &TriangleMesh::CreateBox,
                         "Factory function to create a box. The left bottom "
                         "corner on the "

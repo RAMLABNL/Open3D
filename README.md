@@ -9,14 +9,23 @@ normal-confidence Poisson reconstruction and excludes viewers, GPU backends,
 WebRTC, Jupyter, and bundled ML libraries. Python installs as `open3d-cpu` and
 imports as `open3d`; the Debian package remains `open3d`.
 
-Build with a published `maxq-base` image:
+The backend builds upstream's pinned Embree 4.3.3 because Open3D uses its newer
+error-reporting API. ZIP extraction uses Ubuntu's MiniZIP through Open3D's
+`WITH_MINIZIP` option.
+
+For local iteration, build your current checkout with a published `maxq-base` image:
 
 ```bash
-docker build --target artifacts \
-    --build-arg BASE_IMAGE=ghcr.io/ramlabnl/maxq-base:4.0-a1 \
-    --build-arg OPEN3D_PACKAGE_VERSION=0.19.0.101 \
-    --output type=local,dest=dist .
+./packaging/build-local.sh 0.19.0.102 4.0-a1 4
 ```
+
+The arguments are package version, base image tag, and parallel jobs. The last
+two default to `4.0-a1` and `4`. The script uses your existing Docker registry
+login and includes uncommitted source edits; it does not check out a tag.
+
+After a compiler error, edit the source and rerun the same command. Docker's
+compilation cache retains completed work. Logs are saved under `build-local/logs/`;
+successful packages appear in `dist/local/0.19.0.102/`. Nothing is published.
 
 The build verifies APT and wheel installations in separate fresh base containers.
 Public workflows check source syntax. The private `maxq-base` repository owns

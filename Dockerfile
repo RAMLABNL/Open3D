@@ -5,10 +5,10 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
-       dpkg-dev patchelf libopenblas-pthread-dev liblapacke-dev \
+       dpkg-dev file patchelf libopenblas-pthread-dev liblapacke-dev \
        libeigen3-dev libjsoncpp-dev libjpeg-dev libpng-dev \
        libassimp-dev libzmq3-dev cppzmq-dev libmsgpack-dev libqhull-dev liblzf-dev \
-       libtbb-dev libembree-dev \
+       libtbb-dev libminizip-dev \
     && apt-get clean
 RUN python3 -m venv /opt/open3d-venv \
     && /opt/open3d-venv/bin/pip install --no-cache-dir \
@@ -27,9 +27,8 @@ RUN --mount=type=cache,target=/build,sharing=locked \
         -DCMAKE_CXX_STANDARD=23 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -DOPEN3D_RELEASE_VERSION="${OPEN3D_PACKAGE_VERSION:?Pass the version derived from the release tag}" \
         -DPython3_EXECUTABLE=/opt/open3d-venv/bin/python \
-    && cmake --build /build --target Open3D pybind --parallel "${NPROC}"
-RUN --mount=type=cache,target=/build,sharing=locked \
-    cmake --build /build --target pip-package \
+    && cmake --build /build --target Open3D pybind --parallel "${NPROC}" \
+    && cmake --build /build --target pip-package \
     && cpack --config /build/CPackConfig.cmake -G DEB \
        -B /package -D CPACK_OUTPUT_FILE_PREFIX=/package \
     && mkdir -p /artifacts \

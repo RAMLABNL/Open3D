@@ -467,8 +467,8 @@ struct RaycastingScene::SYCLImpl : public RaycastingScene::Impl {
         rtcSetDeviceSYCLDevice(device_, sycl_device_);
 
         if (!device_) {
-            utility::LogError("Error %d: cannot create device\n",
-                              rtcGetDeviceError(NULL));
+            utility::LogError("Cannot create Embree SYCL device (error {}).",
+                              static_cast<int>(rtcGetDeviceError(nullptr)));
         }
     }
 
@@ -1723,18 +1723,3 @@ uint32_t RaycastingScene::INVALID_ID() { return RTC_INVALID_GEOMETRY_ID; }
 }  // namespace geometry
 }  // namespace t
 }  // namespace open3d
-namespace fmt {
-template <>
-struct formatter<RTCError> {
-    template <typename FormatContext>
-    auto format(const RTCError& c, FormatContext& ctx) const {
-        const char* name = rtcGetErrorString(c);
-        return format_to(ctx.out(), name);
-    }
-
-    template <typename ParseContext>
-    constexpr auto parse(ParseContext& ctx) -> decltype(ctx.begin()) {
-        return ctx.begin();
-    }
-};
-}  // namespace fmt

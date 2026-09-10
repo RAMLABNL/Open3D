@@ -155,16 +155,14 @@ std::string TensorMap::ToString() const {
     }
     std::sort(keys.begin(), keys.end());
 
-    const std::string tensor_format_str = fmt::format(
-            "  - {{:<{}}}: shape={{}}, dtype={{}}, device={{}}", max_key_len);
-
     std::stringstream ss;
     ss << fmt::format("TensorMap(primary_key=\"{}\") with {} attribute{}:",
                       primary_key, size(), size() > 1 ? "s" : "")
        << std::endl;
     for (const std::string& key : keys) {
         const core::Tensor& val = at(key);
-        ss << fmt::format(tensor_format_str, key, val.GetShape().ToString(),
+        ss << fmt::format("  - {:<{}}: shape={}, dtype={}, device={}", key,
+                          max_key_len, val.GetShape().ToString(),
                           val.GetDtype().ToString(),
                           val.GetDevice().ToString());
         if (key == primary_key) {

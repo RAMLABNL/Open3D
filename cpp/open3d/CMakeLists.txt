@@ -190,11 +190,15 @@ if (BUILD_GUI)
 endif()
 
 if (BUILD_SHARED_LIBS AND UNIX)
+    file(RELATIVE_PATH Open3D_PC_PREFIX
+        "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig" "${CMAKE_INSTALL_PREFIX}")
+    file(RELATIVE_PATH Open3D_PC_INCLUDEDIR
+        "${CMAKE_INSTALL_PREFIX}" "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
     file(CONFIGURE OUTPUT Open3D.pc.in
          CONTENT [=[
-prefix=${pcfiledir}/../..
-libdir=${prefix}/lib
-includedir=${prefix}/include/
+prefix=${pcfiledir}/@Open3D_PC_PREFIX@
+libdir=${pcfiledir}/..
+includedir=${prefix}/@Open3D_PC_INCLUDEDIR@
 
 Name: Open3D
 Description: @PROJECT_DESCRIPTION@

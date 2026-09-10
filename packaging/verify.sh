@@ -13,7 +13,8 @@ apt-get update
 apt-get install --yes --no-install-recommends "${debs[0]}"
 dpkg-deb --field "${debs[0]}" Package Version Depends
 cmake -S /opt/open3d-consumer -B /tmp/open3d-consumer-build -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23 \
+    -DEXPECTED_OPEN3D_VERSION="$expected_version"
 cmake --build /tmp/open3d-consumer-build --parallel 2
 ctest --test-dir /tmp/open3d-consumer-build --output-on-failure
 if ldd /tmp/open3d-consumer-build/open3d-consumer | \
@@ -31,8 +32,11 @@ python)
 python3 -m venv /tmp/open3d-consumer-venv
 /tmp/open3d-consumer-venv/bin/pip install "${wheels[0]}"
 /tmp/open3d-consumer-venv/bin/python -I /opt/open3d-consumer/check_python.py "$expected_version"
-if find /tmp/open3d-consumer-venv -name '*.so*' -type f -exec ldd {} \; | \
-    grep -E 'not found|libc\+\+|libGL\.|libGLX\.|libX11\.'; then
+# Trace from the extension so its auditwheel RPATH applies to bundled dependencies.
+python_module="$(/tmp/open3d-consumer-venv/bin/python -I -c \
+    'import open3d.cpu.pybind as pybind; print(pybind.__file__)')"
+dependency_report="$(ldd "$python_module")"
+if grep -E 'not found|libc\+\+|libGL\.|libGLX\.|libX11\.' <<< "$dependency_report"; then
     echo 'Unexpected Python runtime or viewer dependency.' >&2
     exit 1
 fi

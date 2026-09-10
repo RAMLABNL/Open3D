@@ -49,11 +49,14 @@
 
 #include "open3d/ml/contrib/Cloud.h"
 
+#include <type_traits>
+
 namespace open3d {
 namespace ml {
 namespace contrib {
 
-static_assert(std::is_pod<PointXYZ>(), "PointXYZ class must be a POD type.");
+static_assert(std::is_standard_layout_v<PointXYZ> && std::is_trivial_v<PointXYZ>,
+              "PointXYZ must be trivial and have standard layout.");
 
 // Getters
 // *******

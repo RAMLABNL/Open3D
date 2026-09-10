@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <limits>
+#include <type_traits>
 
 #include "open3d/core/AdvancedIndexing.h"
 #include "open3d/core/Dtype.h"
@@ -48,7 +49,8 @@ private:
     void *ptr_;
 };
 
-static_assert(std::is_pod<TestObject>(), "TestObject must be a POD.");
+static_assert(std::is_standard_layout_v<TestObject> && std::is_trivial_v<TestObject>,
+              "TestObject must be trivial and have standard layout.");
 static const int64_t byte_size = sizeof(TestObject);
 static const std::string class_name = "TestObject";
 

@@ -9,12 +9,11 @@ normal-confidence Poisson reconstruction and excludes viewers, GPU backends,
 WebRTC, Jupyter, and bundled ML libraries. Python installs as `open3d-cpu` and
 imports as `open3d`; the Debian package remains `open3d`.
 
-Build with the secret-free dependency stage from the private `maxq-base` checkout:
+Build with a published `maxq-base` image:
 
 ```bash
-docker build --target maxq-base-dependencies --build-arg NPROC=4 \
-    -t maxq-open3d-base:local /opt/MaxQ/maxq-base
-docker build --target artifacts --build-arg BASE_IMAGE=maxq-open3d-base:local \
+docker build --target artifacts \
+    --build-arg BASE_IMAGE=ghcr.io/ramlabnl/maxq-base:4.0-a1 \
     --build-arg OPEN3D_PACKAGE_VERSION=0.19.0.101 \
     --output type=local,dest=dist .
 ```
@@ -24,6 +23,9 @@ Public workflows check source syntax. The private `maxq-base` repository owns
 release builds and GAR publication.
 
 For releases, select a fork tag using the private workflow's `open3d_tag` input.
+Select the published base image using `maxq_base_tag`; `4.0-a1` selects
+`ghcr.io/ramlabnl/maxq-base:4.0-a1`. The workflow pulls that image without rebuilding it.
+
 Tags such as `ramlab-v0.19.0.101`, `v0.19.0.101`, and `0.19.0.101` produce
 package version `0.19.0.101`. Three-part numeric versions also work.
 The workflow checks out the exact tag and passes its version into CMake, the

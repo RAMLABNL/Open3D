@@ -252,10 +252,20 @@ add_custom_target(python-package
 
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
+    # Generate after python-package, which recreates the staging directory.
+    COMMAND ${Python3_EXECUTABLE} -m pybind11_stubgen
+            --output-dir ${PYTHON_PACKAGE_DST_DIR}
+            --enum-class-locations "VoxelPoolingMode:open3d.cpu.pybind.geometry.VoxelGrid.VoxelPoolingMode"
+            --print-invalid-expressions-as-is
+            open3d.cpu.pybind
+    COMMAND ${CMAKE_COMMAND}
+            -DPYTHON_PACKAGE_DST_DIR=${PYTHON_PACKAGE_DST_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/make_python_stub_aliases.cmake
     COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel --dist-dir pip_package
     COMMAND echo "pip wheel created at ${PYTHON_PACKAGE_DST_DIR}/pip_package"
     WORKING_DIRECTORY ${PYTHON_PACKAGE_DST_DIR}
     DEPENDS python-package
+    VERBATIM
 )
 
 # Use `make install-pip-package` to install pip wheel package to the current

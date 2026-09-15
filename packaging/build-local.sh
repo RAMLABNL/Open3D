@@ -46,7 +46,7 @@ Dockerfile. VERSION may also be a tag name prefixed with v or ramlab-v;
 it labels the packages and does not change the checkout.
 
 Defaults: MAXQ_BASE_TAG=4.0-a1, JOBS=4
-Example:  packaging/build-local.sh 0.19.0.102 4.0-a1 4
+Example:  packaging/build-local.sh 0.19.0.103 4.0-a1 4
 
 The build pulls the published base image, reuses Docker's compilation cache,
 and checks APT and wheel installations in separate containers. It never publishes.

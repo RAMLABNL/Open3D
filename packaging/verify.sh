@@ -32,6 +32,10 @@ python)
 python3 -m venv /tmp/open3d-consumer-venv
 /tmp/open3d-consumer-venv/bin/pip install "${wheels[0]}"
 /tmp/open3d-consumer-venv/bin/python -I /opt/open3d-consumer/check_python.py "$expected_version"
+# Check public aliases from the installed wheel, without generating consumer stubs.
+/tmp/open3d-consumer-venv/bin/pip install mypy==1.15.0
+/tmp/open3d-consumer-venv/bin/python -m mypy --strict --follow-imports=silent \
+    /opt/open3d-consumer/check_typing.py
 # Trace from the extension so its auditwheel RPATH applies to bundled dependencies.
 python_module="$(/tmp/open3d-consumer-venv/bin/python -I -c \
     'import open3d.cpu.pybind as pybind; print(pybind.__file__)')"

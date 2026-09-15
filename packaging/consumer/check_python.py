@@ -1,5 +1,6 @@
 """Exercise the backend features used by MaxQ in an isolated wheel installation."""
 
+import ast
 import sys
 from importlib.metadata import distribution
 from pathlib import Path
@@ -20,6 +21,19 @@ class GeometryConsumer:
         metadata = distribution("open3d-cpu")
         assert metadata.version == expected_version, metadata.version
         assert o3d.__version__ == expected_version, o3d.__version__
+        package_files = {str(path) for path in metadata.files or ()}
+        for stub in (
+            "open3d/py.typed",
+            "open3d/__init__.pyi",
+            "open3d/cpu/pybind/geometry/__init__.pyi",
+            "open3d/cpu/pybind/t/geometry.pyi",
+            "open3d/geometry/__init__.pyi",
+            "open3d/t/geometry.pyi",
+        ):
+            assert stub in package_files, f"Wheel is missing {stub}"
+        for stub in metadata.files or ():
+            if stub.suffix == ".pyi":
+                ast.parse(metadata.locate_file(stub).read_text(), filename=str(stub))
         assert metadata.requires and all(
             requirement.startswith("numpy") for requirement in metadata.requires
         ), metadata.requires

@@ -13,7 +13,7 @@ RUN apt-get update \
 RUN python3 -m venv /opt/open3d-venv \
     && /opt/open3d-venv/bin/pip install --no-cache-dir \
        setuptools==75.8.0 wheel==0.45.1 numpy==2.2.3 \
-       auditwheel==6.4.2 packaging==24.2
+       auditwheel==6.4.2 packaging==24.2 pybind11-stubgen==2.5.5
 ENV PATH=/opt/open3d-venv/bin:${PATH}
 
 FROM dependencies AS build
@@ -49,6 +49,7 @@ ARG OPEN3D_PACKAGE_VERSION
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 COPY --from=build /artifacts /artifacts
 COPY packaging/consumer/check_python.py /opt/open3d-consumer/check_python.py
+COPY packaging/consumer/check_typing.py /opt/open3d-consumer/check_typing.py
 COPY packaging/verify.sh /opt/verify-open3d.sh
 RUN bash /opt/verify-open3d.sh python "${OPEN3D_PACKAGE_VERSION}"
 

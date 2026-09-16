@@ -6,11 +6,11 @@ main() {
         usage
         return
     fi
-    if (( $# < 1 || $# > 3 )); then
+    if (( $# < 2 || $# > 3 )); then
         usage >&2
         return 2
     fi
-    local version="${1#ramlab-}" base_tag="${2:-4.0-a1}" jobs="${3:-4}"
+    local version="${1#ramlab-}" base_image="$2" jobs="${3:-4}"
     version="${version#v}"
     local component='(0|[1-9][0-9]*)'
     if [[ ! "$version" =~ ^${component}\.${component}\.${component}(\.${component})?$ ]]; then
@@ -29,7 +29,7 @@ main() {
     printf 'Building local source: %s\nBuild log: %s\n' "$source_dir" "$log_file"
     docker build --pull --progress=plain --target artifacts \
         --file "${source_dir}/Dockerfile" \
-        --build-arg "BASE_IMAGE=ghcr.io/ramlabnl/maxq-base:${base_tag}" \
+        --build-arg "BASE_IMAGE=${base_image}" \
         --build-arg "OPEN3D_PACKAGE_VERSION=${version}" \
         --build-arg "NPROC=${jobs}" \
         --output "type=local,dest=${output_dir}" \
@@ -39,14 +39,14 @@ main() {
 
 usage() {
     cat <<'HELP'
-Usage: packaging/build-local.sh VERSION [MAXQ_BASE_TAG] [JOBS]
+Usage: packaging/build-local.sh VERSION MAXQ_BASE_IMAGE [JOBS]
 
 Build the current checkout, including uncommitted edits, using the workflow's
 Dockerfile. VERSION may also be a tag name prefixed with v or ramlab-v;
 it labels the packages and does not change the checkout.
 
-Defaults: MAXQ_BASE_TAG=4.0-a1, JOBS=4
-Example:  packaging/build-local.sh 0.19.0.103 4.0-a1 4
+MAXQ_BASE_IMAGE must explicitly select the published base image. JOBS defaults to 4.
+Example: packaging/build-local.sh 4.0.0 "$MAXQ_BASE_IMAGE" 4
 
 The build pulls the published base image, reuses Docker's compilation cache,
 and checks APT and wheel installations in separate containers. It never publishes.

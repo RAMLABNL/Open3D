@@ -16,29 +16,25 @@ error-reporting API. ZIP extraction uses Ubuntu's MiniZIP through Open3D's
 For local iteration, build your current checkout with a published `maxq-base` image:
 
 ```bash
-./packaging/build-local.sh 0.19.0.102 4.0-a1 4
+./packaging/build-local.sh 0.19.0.104 "$MAXQ_BASE_IMAGE" 4
 ```
 
-The arguments are package version, base image tag, and parallel jobs. The last
-two default to `4.0-a1` and `4`. The script uses your existing Docker registry
+Set `MAXQ_BASE_IMAGE` to the complete image digest from a completed release manifest.
+The arguments are package version, complete base image reference, and parallel jobs; only jobs defaults to `4`.
+The script uses your existing Docker registry
 login and includes uncommitted source edits; it does not check out a tag.
 
 After a compiler error, edit the source and rerun the same command. Docker's
 compilation cache retains completed work. Logs are saved under `build-local/logs/`;
-successful packages appear in `dist/local/0.19.0.102/`. Nothing is published.
+successful packages appear in `dist/local/0.19.0.104/`. Nothing is published.
 
 The build verifies APT and wheel installations in separate fresh base containers.
-Public workflows check source syntax. The private `maxq-base` repository owns
-release builds and GAR publication.
-
-For releases, select a fork tag using the private workflow's `open3d_tag` input.
-Select the published base image using `maxq_base_tag`; `4.0-a1` selects
-`ghcr.io/ramlabnl/maxq-base:4.0-a1`. The workflow pulls that image without rebuilding it.
-
-Tags such as `ramlab-v0.19.0.101`, `v0.19.0.101`, and `0.19.0.101` produce
-package version `0.19.0.101`. Three-part numeric versions also work.
-The workflow checks out the exact tag and passes its version into CMake, the
-Debian package, and the Python wheel. It does not require a particular branch.
+Public workflows check source syntax. Release builds and GAR publication run in the private `maxq-base` repository.
+The MaxQ coordinator selects the release tag and the completed maxq-base image digest.
+The private workflow verifies the public source tag and passes that digest to Docker's `BASE_IMAGE` argument.
+The publisher uses the selected tag version for CMake, Debian, and Python package metadata.
+Coordinated versions continue the `0.19.0.N` family of the upstream Open3D 0.19 lineage.
+The coordinator allocates the next number from the existing `v0.19.0.N` tags, so the run after `v0.19.0.103` publishes `0.19.0.104`.
 
 The upstream project information follows.
 

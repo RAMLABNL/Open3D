@@ -254,6 +254,7 @@ add_custom_target(python-package
 add_custom_target(pip-package
     # Generate after python-package, which recreates the staging directory.
     COMMAND ${Python3_EXECUTABLE} -m pybind11_stubgen
+            --numpy-array-wrap-with-annotated
             --output-dir ${PYTHON_PACKAGE_DST_DIR}
             --enum-class-locations "VoxelPoolingMode:open3d.cpu.pybind.geometry.VoxelGrid.VoxelPoolingMode"
             --print-invalid-expressions-as-is

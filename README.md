@@ -29,12 +29,11 @@ compilation cache retains completed work. Logs are saved under `build-local/logs
 successful packages appear in `dist/local/0.19.0.104/`. Nothing is published.
 
 The build verifies APT and wheel installations in separate fresh base containers.
-Public workflows check source syntax. Release builds and GAR publication run in the private `maxq-base` repository.
-The MaxQ coordinator selects the release tag and the completed maxq-base image digest.
-The private workflow verifies the public source tag and passes that digest to Docker's `BASE_IMAGE` argument.
-The publisher uses the selected tag version for CMake, Debian, and Python package metadata.
-Coordinated versions continue the `0.19.0.N` family of the upstream Open3D 0.19 lineage.
-The coordinator allocates the next number from the existing `v0.19.0.N` tags, so the run after `v0.19.0.103` publishes `0.19.0.104`.
+Public workflows check source syntax. The local package commands above remain available for development checks.
+The MaxQ coordinator versions the `maxq-base-geometry` image, which builds this fork from a pinned source commit.
+The private `maxq-base` repository records that commit and any build patches in its image recipe.
+Open3D no longer receives separate coordinated tags or GAR package uploads.
+Engine, backend, and geometry consume the shared image by digest.
 
 The upstream project information follows.
 
